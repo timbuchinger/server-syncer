@@ -27,6 +27,9 @@ targets:
 
 var promptUser = askYes
 
+//go:embed config.example.yml
+var exampleConfig string
+
 func main() {
 	if len(os.Args) > 1 && os.Args[1] == "init" {
 		if err := runInitCommand(os.Args[2:]); err != nil {
@@ -39,6 +42,15 @@ func main() {
 	sourceAgent := flag.String("source", "", "source-of-truth agent name")
 	agents := flag.String("agents", "", "comma-separated list of agents to keep in sync (defaults to Copilot,Codex,ClaudeCode,Gemini)")
 	configPath := flag.String("config", defaultConfigPath(), "path to YAML configuration file describing the source and target agents")
+
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "Usage: server-syncer [OPTIONS]\n\n")
+		fmt.Fprintf(os.Stderr, "Options:\n")
+		flag.PrintDefaults()
+		fmt.Fprintf(os.Stderr, "\nDefault config file location: %s\n", defaultConfigPath())
+		fmt.Fprintf(os.Stderr, "\nExample config file:\n%s\n", exampleConfig)
+	}
+
 	flag.Parse()
 
 	if err := ensureConfigFile(*configPath); err != nil {
