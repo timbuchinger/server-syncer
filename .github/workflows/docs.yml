@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - main
-    paths:
-      - 'docs/**'
   workflow_dispatch:
 
 permissions:
@@ -19,6 +17,8 @@ concurrency:
 
 jobs:
   deploy:
+    env:
+      GOCACHE: /tmp/agent-align-go-cache
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -32,11 +32,28 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: "1.25"
+
+      - name: Run go tests with coverage
+        run: go test -coverprofile=coverage.out ./...
+
+      - name: Generate coverage HTML
+        run: go tool cover -html=coverage.out -o coverage.html
+
       - name: Install MkDocs tooling
         run: python -m pip install --upgrade pip && pip install -r docs/requirements.txt
 
       - name: Build documentation site
         run: mkdocs build --site-dir site
+
+      - name: Add coverage report to site
+        run: |
+          mkdir -p site/coverage
+          cp coverage.html site/coverage/index.html
+          printf '{"run_id": "%s", "commit": "%s"}\n' "${{ github.run_id }}" "${{ github.sha }}" > site/coverage/run.json
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

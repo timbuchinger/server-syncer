@@ -7,11 +7,11 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 jobs:
   test:
+    env:
+      GOCACHE: /tmp/agent-align-go-cache
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -21,10 +21,8 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version: "1.25"
-      - name: Run go tests with coverage
-        run: go test -coverprofile=coverage.out ./...
-      - name: Generate coverage HTML
-        run: go tool cover -html=coverage.out -o coverage.html
+      - name: Run go tests
+        run: go test ./...
       - name: Build release binaries
         run: |
           set -euo pipefail
@@ -52,37 +50,3 @@ jobs:
               rm "dist/$bin"
             fi
           done
-      - name: Prepare coverage artifact
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        env:
-          RUN_ID: ${{ github.run_id }}
-          COMMIT_SHA: ${{ github.sha }}
-        run: |
-          set -euo pipefail
-          mkdir -p coverage-site
-          cp coverage.html coverage-site/index.html
-          printf '{"run_id": "%s", "commit": "%s"}\n' "${RUN_ID}" "${COMMIT_SHA}" > coverage-site/run.json
-      - name: Upload coverage artifact
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: coverage-site
-
-  deploy-coverage:
-    needs: test
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-    runs-on: ubuntu-latest
-    steps:
-      - name: Setup GitHub Pages
-        uses: actions/configure-pages@v5
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
-      - name: Announce coverage URL
-        run: 'echo "Coverage report: ${{ steps.deployment.outputs.page_url }}"'
