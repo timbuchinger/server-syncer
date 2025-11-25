@@ -1,6 +1,7 @@
 package main
 
 import (
+	_ "embed"
 	"errors"
 	"flag"
 	"fmt"
@@ -16,11 +17,23 @@ import (
 
 const defaultAgents = "Copilot,Codex,ClaudeCode,Gemini"
 
+//go:embed config.example.yml
+var exampleConfig string
+
 func main() {
 	templatePath := flag.String("template", "", "path to the template file")
 	sourceAgent := flag.String("source", "", "source-of-truth agent name")
 	agents := flag.String("agents", "", "comma-separated list of agents to keep in sync (defaults to Copilot,Codex,ClaudeCode,Gemini)")
 	configPath := flag.String("config", defaultConfigPath(), "path to YAML configuration file describing the source and target agents")
+
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "Usage: server-syncer [OPTIONS]\n\n")
+		fmt.Fprintf(os.Stderr, "Options:\n")
+		flag.PrintDefaults()
+		fmt.Fprintf(os.Stderr, "\nDefault config file location: %s\n", defaultConfigPath())
+		fmt.Fprintf(os.Stderr, "\nExample config file:\n%s\n", exampleConfig)
+	}
+
 	flag.Parse()
 
 	if *templatePath == "" {
