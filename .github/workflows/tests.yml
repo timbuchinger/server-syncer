@@ -72,7 +72,7 @@ jobs:
           mkdir -p "$dest"
           cp coverage.html "$dest/index.html"
           cat <<EOF > "$dest/run.json"
-{"run_id": "${RUN_ID}", "commit": "${COMMIT_SHA}"}
+          {"run_id": "${RUN_ID}", "commit": "${COMMIT_SHA}"}
 EOF
           mkdir -p site/coverage
           cat <<EOF > site/coverage/index.html
