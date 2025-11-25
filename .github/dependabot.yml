@@ -4,7 +4,13 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    automerged_updates:
+      - match:
+          update_type: "all"
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
+    automerged_updates:
+      - match:
+          update_type: "all"

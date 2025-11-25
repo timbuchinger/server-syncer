@@ -18,12 +18,32 @@ formats required by each tool while treating one format as the source of truth.
 
 ## Getting started
 
-1. Install Go 1.22 or newer.
-2. Run the CLI with a template file and source agent, for example:
+1. Download the latest binary from the [releases page](https://github.com/timbuchinger/server-syncer/releases/latest).
+2. Create a config; for example, save this to `server-syncer.yml` next to the binary:
+
+   ```yaml
+   source: codex
+   targets:
+     - copilot
+     - claudeCode
+     - gemini
+   template: configs/codex.json
+   ```
+
+3. Run the app with your config file:
 
    ```bash
-   go run ./cmd/server-syncer -template ./configs/codex.json -source codex
+   ./server-syncer -config server-syncer.yml
    ```
+
+## Documentation linting
+
+When editing markdown, run the lint fixer to download the tool and apply all
+reported fixes:
+
+```bash
+npx markdownlint-cli2 --fix '**/*.md'
+```
 
 ## Configuration file
 
