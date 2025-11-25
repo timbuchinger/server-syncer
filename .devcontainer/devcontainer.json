@@ -13,8 +13,7 @@
     "vscode": {
       "extensions": [
         "golang.go",
-        "esbenp.prettier-vscode",
-        "eamodio.gitlens"
+        "esbenp.prettier-vscode"
       ]
     }
   },
