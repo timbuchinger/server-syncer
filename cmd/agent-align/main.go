@@ -57,7 +57,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "\nDefault config file location: %s\n", defaultConfigPath())
 		fmt.Fprintf(os.Stderr, "\nExample config file:\n%s\n", exampleConfig)
 		fmt.Fprintf(os.Stderr, "Tip: add agent-align to cron for continuous syncing, e.g.:\n")
-		fmt.Fprintf(os.Stderr, "  0 * * * * agent-align -config /etc/agent-align.yml -confirm >/tmp/agent-align.log 2>&1\n\n")
+		fmt.Fprintf(os.Stderr, "  0 * * * * agent-align -confirm >/tmp/agent-align.log 2>&1\n\n")
 	}
 
 	flag.Parse()

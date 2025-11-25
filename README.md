@@ -75,7 +75,7 @@ For example, this cron entry runs the sync every hour. Append
 `>/tmp/agent-align.log 2>&1` if you want to capture logs:
 
 ```cron
-0 * * * * agent-align -config /etc/agent-align.yml -confirm
+0 * * * * agent-align -confirm
 ```
 
 ## Development commands
