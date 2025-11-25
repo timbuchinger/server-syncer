@@ -18,3 +18,36 @@ jobs:
           go-version: 1.22
       - name: Run go tests
         run: go test ./...
+      - name: Build release binaries
+        run: |
+          set -euo pipefail
+          TARGETS=(
+            "linux amd64"
+            "linux arm64"
+            "darwin amd64"
+            "darwin arm64"
+            "windows amd64"
+          )
+          rm -rf dist
+          mkdir -p dist
+          for target in "${TARGETS[@]}"; do
+            IFS=' ' read -r os arch <<< "$target"
+            bin="server-syncer-${os}-${arch}"
+            if [ "$os" = windows ]; then
+              bin="${bin}.exe"
+            fi
+            env GOOS="$os" GOARCH="$arch" CGO_ENABLED=0 go build -ldflags="-s -w" -o "dist/$bin" ./cmd/server-syncer
+            if [ "$os" = windows ]; then
+              zip -j "dist/${bin}.zip" "dist/$bin"
+              rm "dist/$bin"
+            else
+              tar -czf "dist/${bin}.tar.gz" -C dist "$bin"
+              rm "dist/$bin"
+            fi
+          done
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-syncer-pr-binaries
+          path: dist
+          retention-days: 1
