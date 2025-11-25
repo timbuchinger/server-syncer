@@ -71,11 +71,11 @@ Use `-confirm` to skip the confirmation prompt:
 ```
 
 This is useful when running agent-align from cron or other automated systems.
-For example, this cron entry runs the sync every hour; add your preferred logging
-or notifications as needed:
+For example, this cron entry runs the sync every hour. Append
+`>/tmp/agent-align.log 2>&1` if you want to capture logs:
 
 ```cron
-0 * * * * /usr/local/bin/agent-align -config /etc/agent-align.yml -confirm
+0 * * * * agent-align -config /etc/agent-align.yml -confirm
 ```
 
 ## Development commands
