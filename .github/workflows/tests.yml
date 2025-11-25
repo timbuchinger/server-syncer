@@ -5,6 +5,15 @@ on:
   pull_request:
     types: [opened, reopened, synchronize]
 
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -16,5 +25,209 @@ jobs:
         uses: actions/setup-go@v4
         with:
           go-version: 1.22
-      - name: Run go tests
-        run: go test ./...
+      - name: Install gotestsum
+        run: go install gotest.tools/gotestsum@latest
+      - name: Run go tests with JUnit output
+        run: |
+          mkdir -p test-results
+          gotestsum --junitfile test-results/junit.xml --format testname -- ./... -v
+      - name: Generate HTML report
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: Go Test Results
+          path: test-results/junit.xml
+          reporter: java-junit
+          fail-on-error: false
+      - name: Create HTML report for GitHub Pages
+        if: always()
+        run: |
+          mkdir -p public
+          cat > public/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>server-syncer Test Results</title>
+              <style>
+                  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 40px; background: #f5f5f5; }
+                  .container { max-width: 900px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+                  h1 { color: #24292e; border-bottom: 2px solid #0366d6; padding-bottom: 10px; }
+                  h2 { color: #586069; margin-top: 30px; }
+                  .summary { background: #f6f8fa; padding: 20px; border-radius: 6px; margin: 20px 0; }
+                  .pass { color: #22863a; }
+                  .fail { color: #cb2431; }
+                  table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                  th, td { text-align: left; padding: 12px; border-bottom: 1px solid #e1e4e8; }
+                  th { background: #f6f8fa; font-weight: 600; }
+                  tr:hover { background: #f6f8fa; }
+                  .status-pass { background: #dcffe4; color: #22863a; padding: 4px 8px; border-radius: 4px; font-weight: 500; }
+                  .status-fail { background: #ffeef0; color: #cb2431; padding: 4px 8px; border-radius: 4px; font-weight: 500; }
+                  .timestamp { color: #6a737d; font-size: 14px; }
+              </style>
+          </head>
+          <body>
+              <div class="container">
+                  <h1>🧪 server-syncer Test Results</h1>
+                  <p class="timestamp">Generated: <span id="timestamp"></span></p>
+                  <div class="summary" id="summary"></div>
+                  <h2>Test Cases</h2>
+                  <table>
+                      <thead>
+                          <tr>
+                              <th>Test Name</th>
+                              <th>Package</th>
+                              <th>Duration</th>
+                              <th>Status</th>
+                          </tr>
+                      </thead>
+                      <tbody id="test-results"></tbody>
+                  </table>
+              </div>
+              <script>
+                  document.getElementById('timestamp').textContent = new Date().toLocaleString();
+              </script>
+          </body>
+          </html>
+          EOF
+          
+          # Parse JUnit XML and generate JavaScript data
+          python3 << 'PYTHON'
+          import xml.etree.ElementTree as ET
+          import json
+          import sys
+          import os
+          
+          def escape_html(text):
+              """Escape HTML special characters to prevent XSS."""
+              return (text
+                  .replace('&', '&amp;')
+                  .replace('<', '&lt;')
+                  .replace('>', '&gt;')
+                  .replace('"', '&quot;')
+                  .replace("'", '&#x27;'))
+          
+          junit_file = 'test-results/junit.xml'
+          html_file = 'public/index.html'
+          
+          if not os.path.exists(junit_file):
+              print(f"Error: JUnit XML file not found at {junit_file}")
+              sys.exit(1)
+          
+          if not os.path.exists(html_file):
+              print(f"Error: HTML template file not found at {html_file}")
+              sys.exit(1)
+          
+          try:
+              tree = ET.parse(junit_file)
+              root = tree.getroot()
+          except ET.ParseError as e:
+              print(f"Error: Failed to parse JUnit XML: {e}")
+              sys.exit(1)
+          
+          tests = []
+          total = 0
+          passed = 0
+          failed = 0
+          
+          for testsuite in root.findall('.//testsuite'):
+              package = testsuite.get('name', 'unknown')
+              for testcase in testsuite.findall('testcase'):
+                  total += 1
+                  name = testcase.get('name', 'unknown')
+                  time_val = testcase.get('time', '0')
+                  failure = testcase.find('failure')
+                  if failure is not None:
+                      status = 'fail'
+                      failed += 1
+                  else:
+                      status = 'pass'
+                      passed += 1
+                  tests.append({
+                      'name': escape_html(name),
+                      'package': escape_html(package),
+                      'time': time_val,
+                      'status': status
+                  })
+          
+          # Generate updated HTML with embedded data
+          try:
+              with open(html_file, 'r') as f:
+                  content = f.read()
+          except IOError as e:
+              print(f"Error: Failed to read HTML template: {e}")
+              sys.exit(1)
+          
+          js_data = f'''
+              const testData = {json.dumps(tests)};
+              const summary = {{ total: {total}, passed: {passed}, failed: {failed} }};
+              
+              document.getElementById('summary').innerHTML = `
+                  <strong>Summary:</strong> 
+                  <span class="pass">${{summary.passed}} passed</span> | 
+                  <span class="fail">${{summary.failed}} failed</span> | 
+                  ${{summary.total}} total
+              `;
+              
+              const tbody = document.getElementById('test-results');
+              testData.forEach(test => {{
+                  const row = document.createElement('tr');
+                  const statusClass = test.status === 'pass' ? 'status-pass' : 'status-fail';
+                  const statusText = test.status === 'pass' ? '✓ PASS' : '✗ FAIL';
+                  
+                  const nameCell = document.createElement('td');
+                  nameCell.textContent = test.name;
+                  row.appendChild(nameCell);
+                  
+                  const packageCell = document.createElement('td');
+                  packageCell.textContent = test.package;
+                  row.appendChild(packageCell);
+                  
+                  const timeCell = document.createElement('td');
+                  timeCell.textContent = parseFloat(test.time).toFixed(3) + 's';
+                  row.appendChild(timeCell);
+                  
+                  const statusCell = document.createElement('td');
+                  const statusSpan = document.createElement('span');
+                  statusSpan.className = statusClass;
+                  statusSpan.textContent = statusText;
+                  statusCell.appendChild(statusSpan);
+                  row.appendChild(statusCell);
+                  
+                  tbody.appendChild(row);
+              }});
+          '''
+          
+          content = content.replace(
+              "document.getElementById('timestamp').textContent = new Date().toLocaleString();",
+              "document.getElementById('timestamp').textContent = new Date().toLocaleString();" + js_data
+          )
+          
+          try:
+              with open(html_file, 'w') as f:
+                  f.write(content)
+          except IOError as e:
+              print(f"Error: Failed to write HTML report: {e}")
+              sys.exit(1)
+              
+          print(f"HTML report generated successfully: {total} tests, {passed} passed, {failed} failed")
+          PYTHON
+      - name: Upload test results artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: test-results/
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        with:
+          path: public/
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'

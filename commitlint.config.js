@@ -1,7 +1,9 @@
+const normalize = (message) => message.trim();
+
 module.exports = {
   extends: ["@commitlint/config-conventional"],
   ignores: [
-    (message) => message.startsWith("Merge branch "),
-    (message) => message === "Initial plan",
+    (message) => normalize(message).startsWith("Merge "),
+    (message) => normalize(message) === "Initial plan",
   ],
 };
