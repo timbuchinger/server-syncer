@@ -1,10 +1,10 @@
-# Server Syncer
+# Agent Align
 
-![Server Syncer](icon-resized.png)
+![Agent Align](icon-resized.png)
 
-Server Syncer is a Go-based utility that keeps MCP configuration files aligned
+Agent Align is a Go-based utility that keeps MCP configuration files aligned
 across coding agents such as Copilot, Codex, Claude Code, Gemini, and others.
-Choose a source agent, and Server Syncer reads that agent’s configuration file
+Choose a source agent, and Agent Align reads that agent’s configuration file
 to convert it into the formats required by each tool while treating one format
 as the source of truth.
 
@@ -14,13 +14,13 @@ as the source of truth.
 2. Create a config (or update an existing one) by running the init command:
 
    ```bash
-   go run ./cmd/server-syncer init -config ./server-syncer.yml
+   go run ./cmd/agent-align init -config ./agent-align.yml
    ```
 
 3. Run the CLI with that config so it can read the source agent and target list:
 
    ```bash
-   go run ./cmd/server-syncer -config ./server-syncer.yml
+   go run ./cmd/agent-align -config ./agent-align.yml
    ```
 
 4. The tool will echo the converted configurations for each agent so you can copy
@@ -28,14 +28,14 @@ them into the appropriate files.
 
 ## Configuration
 
-Server Syncer looks for a YAML configuration at one of the platform-specific locations:
+Agent Align looks for a YAML configuration at one of the platform-specific locations:
 
-- **Linux**: `/etc/server-syncer.yml`
-- **macOS**: `/usr/local/etc/server-syncer.yml`
-- **Windows**: `C:\ProgramData\server-syncer\config.yml`
+- **Linux**: `/etc/agent-align.yml`
+- **macOS**: `/usr/local/etc/agent-align.yml`
+- **Windows**: `C:\ProgramData\agent-align\config.yml`
 
 You can override this path with `-config <path>`. The file should describe the
-`source` agent and the list of `targets`. Server Syncer automatically reads the
+`source` agent and the list of `targets`. Agent Align automatically reads the
 real configuration file for the source agent (for example, `~/.codex/config.toml`
 when `source: codex`). See the [Configuration Guide](configuration.md) for the
 schema and a sample layout.

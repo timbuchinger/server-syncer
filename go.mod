@@ -1,4 +1,4 @@
-module server-syncer
+module agent-align
 
 go 1.25.4
 

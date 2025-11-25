@@ -32,11 +32,11 @@ jobs:
           mkdir -p dist
           for target in "${TARGETS[@]}"; do
             IFS=' ' read -r os arch <<< "$target"
-            bin="server-syncer-${os}-${arch}"
+            bin="agent-align-${os}-${arch}"
             if [ "$os" = windows ]; then
               bin="${bin}.exe"
             fi
-            env GOOS="$os" GOARCH="$arch" CGO_ENABLED=0 go build -ldflags="-s -w" -o "dist/$bin" ./cmd/server-syncer
+            env GOOS="$os" GOARCH="$arch" CGO_ENABLED=0 go build -ldflags="-s -w" -o "dist/$bin" ./cmd/agent-align
             if [ "$os" = windows ]; then
               zip -j "dist/${bin}.zip" "dist/$bin"
               rm "dist/$bin"
@@ -48,6 +48,6 @@ jobs:
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: server-syncer-pr-binaries
+          name: agent-align-pr-binaries
           path: dist
           retention-days: 1

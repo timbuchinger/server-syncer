@@ -1,6 +1,6 @@
 # Configuration format
 
-`server-syncer` reads a single YAML configuration that tells it which agent
+`agent-align` reads a single YAML configuration that tells it which agent
 format is the source of truth and which agents should be generated from it.
 
 ```yaml

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"server-syncer/internal/config"
+	"agent-align/internal/config"
 )
 
 type promptStub struct {
@@ -28,7 +28,7 @@ func (s *promptStub) answer(prompt string, defaultYes bool) bool {
 
 func TestEnsureConfigFileCreatesDefault(t *testing.T) {
 	tempDir := t.TempDir()
-	path := filepath.Join(tempDir, "conf", "server-syncer.yml")
+	path := filepath.Join(tempDir, "conf", "agent-align.yml")
 
 	stub := &promptStub{responses: []bool{true}}
 	orig := promptUser
@@ -73,7 +73,7 @@ func TestEnsureConfigFileDeclined(t *testing.T) {
 
 func TestRunInitCommandOverwrite(t *testing.T) {
 	tempDir := t.TempDir()
-	path := filepath.Join(tempDir, "server-syncer.yml")
+	path := filepath.Join(tempDir, "agent-align.yml")
 
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		t.Fatalf("failed to create dir: %v", err)
@@ -108,7 +108,7 @@ func TestRunInitCommandOverwrite(t *testing.T) {
 
 func TestRunInitCommandCancelOverwrite(t *testing.T) {
 	tempDir := t.TempDir()
-	path := filepath.Join(tempDir, "server-syncer.yml")
+	path := filepath.Join(tempDir, "agent-align.yml")
 
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		t.Fatalf("failed to create dir: %v", err)
@@ -137,7 +137,7 @@ func TestRunInitCommandCancelOverwrite(t *testing.T) {
 
 func TestRunInitCommandCreatesMissing(t *testing.T) {
 	tempDir := t.TempDir()
-	path := filepath.Join(tempDir, "server-syncer.yml")
+	path := filepath.Join(tempDir, "agent-align.yml")
 
 	stub := &promptStub{responses: []bool{true}}
 	orig := promptUser
@@ -248,10 +248,10 @@ func TestValidateCommand(t *testing.T) {
 		args    []string
 		wantErr bool
 	}{
-		{"no args", []string{"server-syncer"}, false},
-		{"flag arg", []string{"server-syncer", "-config"}, false},
-		{"init command", []string{"server-syncer", "init"}, false},
-		{"invalid command", []string{"server-syncer", "help"}, true},
+		{"no args", []string{"agent-align"}, false},
+		{"flag arg", []string{"agent-align", "-config"}, false},
+		{"init command", []string{"agent-align", "init"}, false},
+		{"invalid command", []string{"agent-align", "help"}, true},
 	}
 
 	for _, tt := range tests {

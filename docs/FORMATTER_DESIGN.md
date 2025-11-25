@@ -5,7 +5,7 @@ MCP configuration files across different coding agents.
 
 ## Overview
 
-server-syncer needs a formatter system that can:
+agent-align needs a formatter system that can:
 
 1. Read configuration from any supported agent format
 2. Convert to a common intermediary representation

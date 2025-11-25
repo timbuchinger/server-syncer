@@ -1,8 +1,8 @@
-# Server Syncer
+# Agent Align
 
-![Server Syncer](icon-resized.png)
+![Agent Align](icon-resized.png)
 
-server-syncer is a Go-based utility that keeps MCP configuration files aligned
+agent-align is a Go-based utility that keeps MCP configuration files aligned
 across coding agents such as Copilot, VSCode, Codex, Claude Code, Gemini, and
 others. Give it a single template file, and it will convert that configuration
 into the formats required by each tool while treating one format as the source
@@ -11,7 +11,7 @@ of truth.
 ## Repository layout
 
 - `go.mod` pins the project to Go 1.25.4.
-- `cmd/server-syncer` contains the CLI entrypoint that reads a template file, chooses
+- `cmd/agent-align` contains the CLI entrypoint that reads a template file, chooses
   a source-of-truth agent, and prints the converted configs for the supported
   agents.
 - `internal/syncer` implements the conversion logic, template loader, and
@@ -19,8 +19,8 @@ of truth.
 
 ## Getting started
 
-1. Download the latest binary from the [releases page](https://github.com/timbuchinger/server-syncer/releases/latest).
-2. Create a config; for example, save this to `server-syncer.yml` next to the binary:
+1. Download the latest binary from the [releases page](https://github.com/timbuchinger/agent-align/releases/latest).
+2. Create a config; for example, save this to `agent-align.yml` next to the binary:
 
    ```yaml
    source: codex
@@ -34,7 +34,7 @@ of truth.
 3. Run the app with your config file:
 
    ```bash
-   ./server-syncer -config server-syncer.yml
+   ./agent-align -config agent-align.yml
    ```
 
 ## CLI Options
@@ -56,7 +56,7 @@ rejects mixes of these options.
 Use `-dry-run` to preview the changes without modifying any files:
 
 ```bash
-./server-syncer -config server-syncer.yml -dry-run
+./agent-align -config agent-align.yml -dry-run
 ```
 
 This displays the converted configurations for each agent along with the target
@@ -67,17 +67,23 @@ file paths, but does not write any files.
 Use `-confirm` to skip the confirmation prompt:
 
 ```bash
-./server-syncer -config server-syncer.yml -confirm
+./agent-align -config agent-align.yml -confirm
 ```
 
-This is useful when running server-syncer from cron or other automated systems.
+This is useful when running agent-align from cron or other automated systems.
+For example, this cron entry runs the sync every hour; add your preferred logging
+or notifications as needed:
+
+```cron
+0 * * * * /usr/local/bin/agent-align -config /etc/agent-align.yml -confirm
+```
 
 ## Development commands
 
 ### Build
 
 ```bash
-go build ./cmd/server-syncer
+go build ./cmd/agent-align
 ```
 
 This compiles the CLI into the current directory so you can run it repeatedly
@@ -86,7 +92,7 @@ without `go run`.
 ### Run
 
 ```bash
-go run ./cmd/server-syncer -config server-syncer.yml
+go run ./cmd/agent-align -config agent-align.yml
 ```
 
 Use `-source` or `-agents` if you need to override values in the config for a
@@ -103,11 +109,11 @@ npx markdownlint-cli2 --fix '**/*.md'
 
 ## Configuration file
 
-`server-syncer` looks for a YAML configuration at one of the platform-specific locations:
+`agent-align` looks for a YAML configuration at one of the platform-specific locations:
 
-- Linux: `/etc/server-syncer.yml`
-- macOS: `/usr/local/etc/server-syncer.yml`
-- Windows: `C:\ProgramData\server-syncer\config.yml`
+- Linux: `/etc/agent-align.yml`
+- macOS: `/usr/local/etc/agent-align.yml`
+- Windows: `C:\ProgramData\agent-align\config.yml`
 
 You can override this path with `-config <path>`. The file should describe the
 `source` agent and the list of `targets`; see `CONFIGURATION.md` for the schema

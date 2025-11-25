@@ -16,8 +16,8 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"server-syncer/internal/config"
-	"server-syncer/internal/syncer"
+	"agent-align/internal/config"
+	"agent-align/internal/syncer"
 )
 
 const (
@@ -51,11 +51,13 @@ func main() {
 	confirm := flag.Bool("confirm", false, "skip user confirmation prompt (useful for cron jobs)")
 
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: server-syncer [OPTIONS]\n\n")
+		fmt.Fprintf(os.Stderr, "Usage: agent-align [OPTIONS]\n\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
 		flag.PrintDefaults()
 		fmt.Fprintf(os.Stderr, "\nDefault config file location: %s\n", defaultConfigPath())
 		fmt.Fprintf(os.Stderr, "\nExample config file:\n%s\n", exampleConfig)
+		fmt.Fprintf(os.Stderr, "Tip: add agent-align to cron for continuous syncing, e.g.:\n")
+		fmt.Fprintf(os.Stderr, "  0 * * * * /usr/local/bin/agent-align -config /etc/agent-align.yml -confirm >> /var/log/agent-align.log 2>&1\n\n")
 	}
 
 	flag.Parse()
@@ -188,14 +190,14 @@ func parseAgents(agents string) []string {
 func defaultConfigPath() string {
 	switch runtime.GOOS {
 	case "darwin":
-		return "/usr/local/etc/server-syncer.yml"
+		return "/usr/local/etc/agent-align.yml"
 	case "windows":
 		if base := os.Getenv("ProgramData"); base != "" {
-			return filepath.Join(base, "server-syncer", "config.yml")
+			return filepath.Join(base, "agent-align", "config.yml")
 		}
-		return `C:\ProgramData\server-syncer\config.yml`
+		return `C:\ProgramData\agent-align\config.yml`
 	default:
-		return "/etc/server-syncer.yml"
+		return "/etc/agent-align.yml"
 	}
 }
 
@@ -277,7 +279,7 @@ func askYes(prompt string, defaultYes bool) bool {
 
 func promptForConfig() (config.Config, error) {
 	reader := bufio.NewReader(os.Stdin)
-	fmt.Println("\nLet's create your server-syncer configuration.")
+	fmt.Println("\nLet's create your agent-align configuration.")
 	source, err := promptSourceAgent(reader)
 	if err != nil {
 		return config.Config{}, err

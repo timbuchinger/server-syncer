@@ -26,7 +26,7 @@ jobs:
   tests:
     runs-on: ubuntu-latest
     env:
-      GOCACHE: /tmp/server-syncer-go-cache
+      GOCACHE: /tmp/agent-align-go-cache
     steps:
       - uses: actions/checkout@v6
         with:
@@ -58,7 +58,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       RELEASE_TYPE_OVERRIDE: ${{ needs.verify.outputs.release_type }}
-      GOCACHE: /tmp/server-syncer-go-cache
+      GOCACHE: /tmp/agent-align-go-cache
     steps:
       - uses: actions/checkout@v6
         with:
@@ -81,11 +81,11 @@ jobs:
           mkdir -p dist
           for target in "${TARGETS[@]}"; do
             IFS=' ' read -r os arch <<< "$target"
-            bin="server-syncer-${os}-${arch}"
+            bin="agent-align-${os}-${arch}"
             if [ "$os" = windows ]; then
               bin="${bin}.exe"
             fi
-            env GOOS="$os" GOARCH="$arch" CGO_ENABLED=0 go build -ldflags="-s -w" -o "dist/$bin" ./cmd/server-syncer
+            env GOOS="$os" GOARCH="$arch" CGO_ENABLED=0 go build -ldflags="-s -w" -o "dist/$bin" ./cmd/agent-align
             if [ "$os" = windows ]; then
               zip -j "dist/${bin}.zip" "dist/$bin"
               rm "dist/$bin"
