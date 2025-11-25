@@ -225,18 +225,37 @@ func parseServersFromTOML(payload string) (map[string]interface{}, error) {
 }
 
 // parseTOMLArray parses a simple TOML array like ["a", "b", "c"]
+// This handles basic quoted strings but does not support escaped quotes within values
 func parseTOMLArray(value string) []string {
     value = strings.TrimPrefix(value, "[")
     value = strings.TrimSuffix(value, "]")
+    value = strings.TrimSpace(value)
+
+    if value == "" {
+        return nil
+    }
+
     var result []string
-    parts := strings.Split(value, ",")
-    for _, part := range parts {
-        part = strings.TrimSpace(part)
-        part = strings.Trim(part, "\"")
-        if part != "" {
-            result = append(result, part)
+    var current strings.Builder
+    inQuotes := false
+
+    for i := 0; i < len(value); i++ {
+        ch := value[i]
+        switch {
+        case ch == '"' && !inQuotes:
+            inQuotes = true
+        case ch == '"' && inQuotes:
+            inQuotes = false
+            result = append(result, current.String())
+            current.Reset()
+        case ch == ',' && !inQuotes:
+            // Skip commas outside quotes (between elements)
+            continue
+        case inQuotes:
+            current.WriteByte(ch)
         }
     }
+
     return result
 }
 

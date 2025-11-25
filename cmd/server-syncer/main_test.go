@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -214,27 +215,14 @@ func TestParseAgents(t *testing.T) {
 
 func TestDefaultConfigTemplateIncludesVSCode(t *testing.T) {
 	// Verify that the default config template includes vscode
-	if !contains(defaultConfigTemplate, "vscode") {
+	if !strings.Contains(defaultConfigTemplate, "vscode") {
 		t.Error("defaultConfigTemplate should include vscode")
 	}
 }
 
 func TestDefaultAgentsIncludesVSCode(t *testing.T) {
 	// Verify that the default agents includes VSCode
-	if !contains(defaultAgents, "VSCode") {
+	if !strings.Contains(defaultAgents, "VSCode") {
 		t.Error("defaultAgents should include VSCode")
 	}
-}
-
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(s) > 0 && containsHelper(s, substr))
-}
-
-func containsHelper(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
 }

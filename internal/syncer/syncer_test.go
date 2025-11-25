@@ -235,3 +235,32 @@ args = ["arg1", "arg2"]`
         }
     })
 }
+
+func TestParseTOMLArray(t *testing.T) {
+    tests := []struct {
+        name     string
+        input    string
+        expected []string
+    }{
+        {"simple array", `["a", "b", "c"]`, []string{"a", "b", "c"}},
+        {"array with spaces", `[ "a" , "b" , "c" ]`, []string{"a", "b", "c"}},
+        {"array with comma in value", `["a,b", "c"]`, []string{"a,b", "c"}},
+        {"empty array", `[]`, nil},
+        {"single element", `["only"]`, []string{"only"}},
+        {"path arguments", `["-y", "@modelcontextprotocol/server-github"]`, []string{"-y", "@modelcontextprotocol/server-github"}},
+    }
+
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            result := parseTOMLArray(tt.input)
+            if len(result) != len(tt.expected) {
+                t.Fatalf("expected %d elements, got %d: %v", len(tt.expected), len(result), result)
+            }
+            for i, expected := range tt.expected {
+                if result[i] != expected {
+                    t.Errorf("element[%d] = %q, want %q", i, result[i], expected)
+                }
+            }
+        })
+    }
+}
