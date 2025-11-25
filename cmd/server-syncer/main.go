@@ -21,13 +21,13 @@ import (
 )
 
 const (
-	defaultAgents = "Copilot,VSCode,Codex,ClaudeCode,Gemini"
+	defaultAgents = "copilot,vscode,codex,claudecode,gemini"
 )
 
 var (
 	promptUser      = askYes
 	collectConfig   = promptForConfig
-	supportedAgents = []string{"codex", "gemini", "copilot", "claudecode"}
+	supportedAgents = []string{"codex", "vscode", "gemini", "copilot", "claudecode"}
 )
 
 //go:embed config.example.yml

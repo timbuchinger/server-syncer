@@ -233,9 +233,11 @@ func TestParseAgents(t *testing.T) {
 	}
 }
 
-func TestDefaultAgentsIncludesVSCode(t *testing.T) {
-	// Verify that the default agents includes VSCode
-	if !strings.Contains(defaultAgents, "VSCode") {
-		t.Error("defaultAgents should include VSCode")
+func TestDefaultAgentsAreLowercase(t *testing.T) {
+	if defaultAgents != strings.ToLower(defaultAgents) {
+		t.Fatalf("defaultAgents must be lowercase, got %q", defaultAgents)
+	}
+	if !strings.Contains(defaultAgents, "vscode") {
+		t.Error("defaultAgents should include vscode")
 	}
 }

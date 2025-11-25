@@ -27,7 +27,7 @@ of truth.
    targets:
      - copilot
      - vscode
-     - claudeCode
+     - claudecode
      - gemini
    ```
 
@@ -42,7 +42,7 @@ of truth.
 Option | Description
 ------ | -----------
 `-source` | Source-of-truth agent name
-`-agents` | Comma-separated list of agents to sync (defaults to Copilot,VSCode,Codex,ClaudeCode,Gemini)
+`-agents` | Comma-separated list of agents to sync (defaults to copilot,vscode,codex,claudecode,gemini)
 `-config` | Path to YAML configuration file
 `-dry-run` | Only show what would be changed without applying changes
 `-confirm` | Skip user confirmation prompt (useful for cron jobs)
@@ -111,8 +111,8 @@ and a sample layout. Config values are used unless you explicitly set `-source`
 or `-agents`. The CLI reads the actual configuration file for the selected
 source agent (for example, `~/.codex/config.toml` when `source: codex`) and uses
 it as the template automatically. If no config file is found and you omit
-`-agents`, the CLI still defaults to `Copilot`, `VSCode`, `Codex`, `ClaudeCode`,
-and `Gemini`.
+`-agents`, the CLI still defaults to `copilot`, `vscode`, `codex`, `claudecode`,
+and `gemini`.
 
 The tool will display the converted configurations for each agent and prompt
 for confirmation before writing the changes (unless `-confirm` is specified).
