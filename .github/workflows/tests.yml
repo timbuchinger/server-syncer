@@ -72,10 +72,10 @@ jobs:
           mkdir -p "$dest"
           cp coverage.html "$dest/index.html"
           cat <<EOF > "$dest/run.json"
-          {"run_id": "${RUN_ID}", "commit": "${COMMIT_SHA}"}
+{"run_id": "${RUN_ID}", "commit": "${COMMIT_SHA}"}
 EOF
           mkdir -p site/coverage
-          cat <<EOF > site/coverage/index.html
+          cat <<'EOL' > site/coverage/index.html
 <!doctype html>
 <html lang="en">
 <head>
@@ -88,7 +88,7 @@ EOF
   <p>Commit: ${COMMIT_SHA}</p>
 </body>
 </html>
-EOF
+EOL
       - name: Setup GitHub Pages
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: actions/configure-pages@v5
