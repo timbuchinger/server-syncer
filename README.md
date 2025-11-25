@@ -149,6 +149,19 @@ The unit tests cover template loading and the syncer's validation/conversion log
   package stays green.
 - **Commit message format** – a workflow enforces Conventional Commit-style
   messages so releases can be calculated automatically.
-- **Release** – a manual workflow dispatch runs Go tests and then semantic-release
-  to bump the recorded semantic version and publish the tag/release; the job
-  still infers the increment from Conventional Commits.
+- **Release** – a manual workflow dispatch now runs Go tests first, pauses for a
+  required approval in the `release-approval` environment, and then builds the
+  release artifacts before `semantic-release` publishes the tag/release. During
+  the approval step you can choose `auto`, `patch`, `minor`, `major`, or `none`
+  for the release type so a reviewer can override the computed bump or skip a
+  publication entirely.
+
+### Manual release verification
+
+Start the **Release** workflow from the *Actions* tab and pick a value for the
+`release_type` input. The workflow runs the full test suite, waits for approval
+in the `release-approval` environment, and then publishes via `semantic-release`
+if the selected type is not `none`. Set the environment to require reviewers so
+the workflow pauses until someone signs off. Choosing `auto` lets commit history
+pick the bump, while the other values force the release type that reaches
+semantic-release.
