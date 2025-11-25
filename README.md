@@ -19,6 +19,16 @@ server-syncer is a Go-based utility that keeps MCP configuration files aligned a
    go run ./cmd/server-syncer -template ./configs/codex.json -source codex
    ```
 
+## Configuration file
+
+`server-syncer` looks for a YAML configuration at one of the platform-specific locations:
+
+- Linux: `/etc/server-syncer.yml`
+- macOS: `/usr/local/etc/server-syncer.yml`
+- Windows: `C:\ProgramData\server-syncer\config.yml`
+
+You can override this path with `-config <path>`. The file should describe the `source` agent and the list of `targets`; see `CONFIGURATION.md` for the schema and a sample layout. When a config file is present, its values are used unless you explicitly set `-source` or `-agents`. If no config file is found and you omit `-agents`, the CLI still defaults to `Copilot`, `Codex`, `ClaudeCode`, and `Gemini`.
+
 3. The tool will echo the converted configurations for each agent so you can copy them into the appropriate files.
 
 ## Testing
