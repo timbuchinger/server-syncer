@@ -96,10 +96,35 @@ jobs:
           python3 << 'PYTHON'
           import xml.etree.ElementTree as ET
           import json
-          import html
+          import sys
+          import os
           
-          tree = ET.parse('test-results/junit.xml')
-          root = tree.getroot()
+          def escape_html(text):
+              """Escape HTML special characters to prevent XSS."""
+              return (text
+                  .replace('&', '&amp;')
+                  .replace('<', '&lt;')
+                  .replace('>', '&gt;')
+                  .replace('"', '&quot;')
+                  .replace("'", '&#x27;'))
+          
+          junit_file = 'test-results/junit.xml'
+          html_file = 'public/index.html'
+          
+          if not os.path.exists(junit_file):
+              print(f"Error: JUnit XML file not found at {junit_file}")
+              sys.exit(1)
+          
+          if not os.path.exists(html_file):
+              print(f"Error: HTML template file not found at {html_file}")
+              sys.exit(1)
+          
+          try:
+              tree = ET.parse(junit_file)
+              root = tree.getroot()
+          except ET.ParseError as e:
+              print(f"Error: Failed to parse JUnit XML: {e}")
+              sys.exit(1)
           
           tests = []
           total = 0
@@ -120,15 +145,19 @@ jobs:
                       status = 'pass'
                       passed += 1
                   tests.append({
-                      'name': name,
-                      'package': package,
+                      'name': escape_html(name),
+                      'package': escape_html(package),
                       'time': time_val,
                       'status': status
                   })
           
           # Generate updated HTML with embedded data
-          with open('public/index.html', 'r') as f:
-              content = f.read()
+          try:
+              with open(html_file, 'r') as f:
+                  content = f.read()
+          except IOError as e:
+              print(f"Error: Failed to read HTML template: {e}")
+              sys.exit(1)
           
           js_data = f'''
               const testData = {json.dumps(tests)};
@@ -146,12 +175,26 @@ jobs:
                   const row = document.createElement('tr');
                   const statusClass = test.status === 'pass' ? 'status-pass' : 'status-fail';
                   const statusText = test.status === 'pass' ? '✓ PASS' : '✗ FAIL';
-                  row.innerHTML = `
-                      <td>${{test.name}}</td>
-                      <td>${{test.package}}</td>
-                      <td>${{parseFloat(test.time).toFixed(3)}}s</td>
-                      <td><span class="${{statusClass}}">${{statusText}}</span></td>
-                  `;
+                  
+                  const nameCell = document.createElement('td');
+                  nameCell.textContent = test.name;
+                  row.appendChild(nameCell);
+                  
+                  const packageCell = document.createElement('td');
+                  packageCell.textContent = test.package;
+                  row.appendChild(packageCell);
+                  
+                  const timeCell = document.createElement('td');
+                  timeCell.textContent = parseFloat(test.time).toFixed(3) + 's';
+                  row.appendChild(timeCell);
+                  
+                  const statusCell = document.createElement('td');
+                  const statusSpan = document.createElement('span');
+                  statusSpan.className = statusClass;
+                  statusSpan.textContent = statusText;
+                  statusCell.appendChild(statusSpan);
+                  row.appendChild(statusCell);
+                  
                   tbody.appendChild(row);
               }});
           '''
@@ -161,8 +204,14 @@ jobs:
               "document.getElementById('timestamp').textContent = new Date().toLocaleString();" + js_data
           )
           
-          with open('public/index.html', 'w') as f:
-              f.write(content)
+          try:
+              with open(html_file, 'w') as f:
+                  f.write(content)
+          except IOError as e:
+              print(f"Error: Failed to write HTML report: {e}")
+              sys.exit(1)
+              
+          print(f"HTML report generated successfully: {total} tests, {passed} passed, {failed} failed")
           PYTHON
       - name: Upload test results artifact
         uses: actions/upload-artifact@v4
