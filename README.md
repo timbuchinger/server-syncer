@@ -3,9 +3,10 @@
 ![Server Syncer](icon-resized.png)
 
 server-syncer is a Go-based utility that keeps MCP configuration files aligned
-across coding agents such as Copilot, Codex, Claude Code, Gemini, and others.
-Give it a single template file, and it will convert that configuration into the
-formats required by each tool while treating one format as the source of truth.
+across coding agents such as Copilot, VSCode, Codex, Claude Code, Gemini, and
+others. Give it a single template file, and it will convert that configuration
+into the formats required by each tool while treating one format as the source
+of truth.
 
 ## Repository layout
 
@@ -25,6 +26,7 @@ formats required by each tool while treating one format as the source of truth.
    source: codex
    targets:
      - copilot
+     - vscode
      - claudeCode
      - gemini
    template: configs/codex.json
@@ -33,9 +35,10 @@ formats required by each tool while treating one format as the source of truth.
 3. Run the app with your config file:
 
    ```bash
-   ./server-syncer -config server-syncer.yml
+   ./server-syncer -config server-syncer.yml -template configs/codex.json
    ```
 
+<<<<<<< HEAD
 ## Development commands
 
 ### Build
@@ -64,6 +67,39 @@ go test ./...
 
 The tests cover template loading along with the syncer's validation and
 conversion logic.
+=======
+## CLI Options
+
+Option | Description
+------ | -----------
+`-template` | Path to the template file (required)
+`-source` | Source-of-truth agent name
+`-agents` | Comma-separated list of agents to sync (defaults to Copilot,VSCode,Codex,ClaudeCode,Gemini)
+`-config` | Path to YAML configuration file
+`-dry-run` | Only show what would be changed without applying changes
+`-confirm` | Skip user confirmation prompt (useful for cron jobs)
+
+### Dry Run Mode
+
+Use `-dry-run` to preview the changes without modifying any files:
+
+```bash
+./server-syncer -config server-syncer.yml -template configs/codex.json -dry-run
+```
+
+This displays the converted configurations for each agent along with the target
+file paths, but does not write any files.
+
+### Non-Interactive Mode
+
+Use `-confirm` to skip the confirmation prompt:
+
+```bash
+./server-syncer -config server-syncer.yml -template configs/codex.json -confirm
+```
+
+This is useful when running server-syncer from cron or other automated systems.
+>>>>>>> b9a968f320ae8d8aa1442906cf57c49184097613
 
 ## Documentation linting
 
@@ -83,14 +119,45 @@ npx markdownlint-cli2 --fix '**/*.md'
 - Windows: `C:\ProgramData\server-syncer\config.yml`
 
 You can override this path with `-config <path>`. The file should describe the
+<<<<<<< HEAD
 `source` agent, the list of `targets`, and the `template` path; see
 `CONFIGURATION.md` for the schema and a sample layout. Config values are used
 unless you explicitly set `-source` or `-agents`, and the template path always
 comes from the config.
+=======
+`source` agent and the list of `targets`; see `CONFIGURATION.md` for the schema
+and a sample layout. When a config file is present, its values are used unless
+you explicitly set `-source` or `-agents`. If no config file is found and you
+omit `-agents`, the CLI still defaults to `Copilot`, `VSCode`, `Codex`,
+`ClaudeCode`, and `Gemini`.
+>>>>>>> b9a968f320ae8d8aa1442906cf57c49184097613
 
-The tool will echo the converted configurations for each agent so you can copy
-them into the appropriate files.
+The tool will display the converted configurations for each agent and prompt
+for confirmation before writing the changes (unless `-confirm` is specified).
 
+## Supported Agents
+
+Agent | Config File | Format | Node Name
+----- | ----------- | ------ | ---------
+copilot | `~/.copilot/mcp-config.json` | JSON | `mcpServers`
+vscode | `~/.config/Code/User/mcp.json` | JSON | `servers`
+codex | `~/.codex/config.toml` | TOML | N/A
+claudecode | `~/.claude.json` | JSON | `mcpServers`
+gemini | `~/.gemini/settings.json` | JSON | `mcpServers`
+
+<<<<<<< HEAD
+=======
+## Testing
+
+Run:
+
+```bash
+go test ./...
+```
+
+The unit tests cover template loading and the syncer's validation/conversion logic.
+
+>>>>>>> b9a968f320ae8d8aa1442906cf57c49184097613
 ## CI and releases
 
 - **Tests** – `go test ./...` runs on every push and pull request so the core
