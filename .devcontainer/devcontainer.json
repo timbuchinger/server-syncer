@@ -1,0 +1,22 @@
+{
+  "name": "Server Syncer",
+  "image": "mcr.microsoft.com/devcontainers/go:1.22",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "20"
+    }
+  },
+  "workspaceFolder": "/workspaces/server-syncer",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/server-syncer,type=bind,consistency=cached",
+  "postCreateCommand": "npm ci",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "golang.go",
+        "esbenp.prettier-vscode"
+      ]
+    }
+  },
+  "forwardPorts": [],
+  "remoteUser": "vscode"
+}
