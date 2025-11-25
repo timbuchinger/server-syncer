@@ -14,7 +14,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+      - name: Install markdownlint-cli2
+        run: npm install -g markdownlint-cli2
       - name: Lint markdown with markdownlint-cli2
-        uses: markdownlint/markdownlint-cli2-action@v1
-        with:
-          args: "--fix '**/*.md'"
+        run: markdownlint-cli2 --fix '**/*.md'
