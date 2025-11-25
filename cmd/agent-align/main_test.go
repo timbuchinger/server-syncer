@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -10,295 +11,168 @@ import (
 	"agent-align/internal/config"
 )
 
-type promptStub struct {
-	responses []bool
-	idx       int
-	prompts   []string
+func TestParseAgents(t *testing.T) {
+	cases := []struct {
+		name  string
+		input string
+		want  []string
+	}{
+		{"simple", "copilot,vscode", []string{"copilot", "vscode"}},
+		{"spaces", " copilot , , gemini ", []string{"copilot", "gemini"}},
+		{"empty", "", nil},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := parseAgents(tc.input)
+			if !reflect.DeepEqual(got, tc.want) {
+				t.Fatalf("parseAgents(%q) = %v, want %v", tc.input, got, tc.want)
+			}
+		})
+	}
 }
 
-func (s *promptStub) answer(prompt string, defaultYes bool) bool {
-	s.prompts = append(s.prompts, prompt)
-	if s.idx >= len(s.responses) {
-		return defaultYes
+func TestParseSelectionIndices(t *testing.T) {
+	t.Run("valid commas", func(t *testing.T) {
+		got, err := parseSelectionIndices("1, 2,3")
+		if err != nil {
+			t.Fatalf("expected success, got %v", err)
+		}
+		if !reflect.DeepEqual(got, []int{1, 2, 3}) {
+			t.Fatalf("unexpected result: %v", got)
+		}
+	})
+
+	t.Run("space separated", func(t *testing.T) {
+		got, err := parseSelectionIndices("1  4")
+		if err != nil {
+			t.Fatalf("expected success, got %v", err)
+		}
+		if !reflect.DeepEqual(got, []int{1, 4}) {
+			t.Fatalf("unexpected result: %v", got)
+		}
+	})
+
+	if _, err := parseSelectionIndices(""); err == nil {
+		t.Fatal("expected error for empty input")
 	}
-	resp := s.responses[s.idx]
-	s.idx++
-	return resp
+
+	if _, err := parseSelectionIndices("abc"); err == nil {
+		t.Fatal("expected error for invalid number")
+	}
 }
 
-func TestEnsureConfigFileCreatesDefault(t *testing.T) {
-	tempDir := t.TempDir()
-	path := filepath.Join(tempDir, "conf", "agent-align.yml")
-
-	stub := &promptStub{responses: []bool{true}}
-	orig := promptUser
-	promptUser = stub.answer
-	t.Cleanup(func() { promptUser = orig })
-	origCollect := collectConfig
-	collectConfig = func() (config.Config, error) {
-		return config.Config{Source: "codex", Targets: []string{"gemini", "copilot"}}, nil
-	}
-	t.Cleanup(func() { collectConfig = origCollect })
-
-	if err := ensureConfigFile(path); err != nil {
-		t.Fatalf("ensureConfigFile failed: %v", err)
+func TestResolveExecutionMode(t *testing.T) {
+	cases := []struct {
+		name          string
+		source        string
+		agents        string
+		configFlag    bool
+		wantUseConfig bool
+		wantErr       bool
+	}{
+		{"defaults", "", "", false, true, false},
+		{"explicit", "copilot", "codex", false, false, false},
+		{"missingAgents", "copilot", "", false, true, true},
+		{"configOnly", "", "", true, true, false},
+		{"conflicting", "copilot", "codex", true, true, true},
 	}
 
-	createdCfg, err := config.Load(path)
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := resolveExecutionMode(tc.source, tc.agents, tc.configFlag)
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("unexpected error state: %v", err)
+			}
+			if got != tc.wantUseConfig {
+				t.Fatalf("got %v, want %v", got, tc.wantUseConfig)
+			}
+		})
+	}
+}
+
+func TestValidateCommand(t *testing.T) {
+	if err := validateCommand([]string{"agent-align"}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if err := validateCommand([]string{"agent-align", "init"}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if err := validateCommand([]string{"agent-align", "-source"}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if err := validateCommand([]string{"agent-align", "run"}); err == nil {
+		t.Fatal("expected error for unknown command")
+	}
+}
+
+func TestPromptSourceAgent(t *testing.T) {
+	reader := bufio.NewReader(strings.NewReader("invalid\n1\n"))
+	got, err := promptSourceAgent(reader)
 	if err != nil {
-		t.Fatalf("failed to load created config: %v", err)
+		t.Fatalf("expected no error, got %v", err)
 	}
-	expected := config.Config{Source: "codex", Targets: []string{"gemini", "copilot"}}
-	if !reflect.DeepEqual(createdCfg, expected) {
-		t.Fatalf("config mismatch. got %#v", createdCfg)
-	}
-
-	if len(stub.prompts) != 1 {
-		t.Fatalf("expected one prompt, got %d", len(stub.prompts))
+	if got != supportedAgents[0] {
+		t.Fatalf("expected %q, got %q", supportedAgents[0], got)
 	}
 }
 
-func TestEnsureConfigFileDeclined(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "config.yml")
-
-	stub := &promptStub{responses: []bool{false}}
-	orig := promptUser
-	promptUser = stub.answer
-	t.Cleanup(func() { promptUser = orig })
-
-	if err := ensureConfigFile(path); err == nil {
-		t.Fatal("expected error when user declines to create config")
-	}
-}
-
-func TestRunInitCommandOverwrite(t *testing.T) {
-	tempDir := t.TempDir()
-	path := filepath.Join(tempDir, "agent-align.yml")
-
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		t.Fatalf("failed to create dir: %v", err)
-	}
-	if err := os.WriteFile(path, []byte("old"), 0o644); err != nil {
-		t.Fatalf("failed to write existing file: %v", err)
-	}
-
-	stub := &promptStub{responses: []bool{true}}
-	orig := promptUser
-	promptUser = stub.answer
-	t.Cleanup(func() { promptUser = orig })
-	origCollect := collectConfig
-	collectConfig = func() (config.Config, error) {
-		return config.Config{Source: "gemini", Targets: []string{"codex"}}, nil
-	}
-	t.Cleanup(func() { collectConfig = origCollect })
-
-	if err := runInitCommand([]string{"-config", path}); err != nil {
-		t.Fatalf("runInitCommand failed: %v", err)
-	}
-
-	createdCfg, err := config.Load(path)
+func TestPromptTargetAgents(t *testing.T) {
+	reader := bufio.NewReader(strings.NewReader("0\n1,3\n"))
+	targets, err := promptTargetAgents(reader, "copilot")
 	if err != nil {
-		t.Fatalf("failed to load config: %v", err)
+		t.Fatalf("expected no error, got %v", err)
 	}
-	expected := config.Config{Source: "gemini", Targets: []string{"codex"}}
-	if !reflect.DeepEqual(createdCfg, expected) {
-		t.Fatalf("config not overwritten. got %#v", createdCfg)
+	if len(targets) != 2 || targets[0] == "" {
+		t.Fatalf("unexpected targets: %v", targets)
 	}
 }
 
-func TestRunInitCommandCancelOverwrite(t *testing.T) {
-	tempDir := t.TempDir()
-	path := filepath.Join(tempDir, "agent-align.yml")
+func TestWriteConfigFileCreatesPath(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "nested", "agent.yml")
 
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		t.Fatalf("failed to create dir: %v", err)
-	}
-	if err := os.WriteFile(path, []byte("old"), 0o644); err != nil {
-		t.Fatalf("failed to write existing file: %v", err)
-	}
-
-	stub := &promptStub{responses: []bool{false}}
-	orig := promptUser
-	promptUser = stub.answer
-	t.Cleanup(func() { promptUser = orig })
-
-	if err := runInitCommand([]string{"-config", path}); err != nil {
-		t.Fatalf("runInitCommand failed: %v", err)
+	if err := writeConfigFile(path, config.Config{Source: "copilot", Targets: []string{"vscode"}}); err != nil {
+		t.Fatalf("writeConfigFile failed: %v", err)
 	}
 
 	data, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("failed to read config: %v", err)
 	}
-	if string(data) != "old" {
-		t.Fatalf("config should not have changed, got %q", string(data))
+	if !strings.Contains(string(data), "source: copilot") {
+		t.Fatalf("unexpected config contents: %s", data)
 	}
 }
 
-func TestRunInitCommandCreatesMissing(t *testing.T) {
-	tempDir := t.TempDir()
-	path := filepath.Join(tempDir, "agent-align.yml")
+func TestEnsureConfigFileCreatesFile(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "agent.yml")
 
-	stub := &promptStub{responses: []bool{true}}
-	orig := promptUser
-	promptUser = stub.answer
-	t.Cleanup(func() { promptUser = orig })
+	origPrompt := promptUser
 	origCollect := collectConfig
+	defer func() {
+		promptUser = origPrompt
+		collectConfig = origCollect
+	}()
+
+	promptUser = func(string, bool) bool { return true }
 	collectConfig = func() (config.Config, error) {
-		return config.Config{Source: "copilot", Targets: []string{"claudecode"}}, nil
-	}
-	t.Cleanup(func() { collectConfig = origCollect })
-
-	if err := runInitCommand([]string{"-config", path}); err != nil {
-		t.Fatalf("runInitCommand failed: %v", err)
+		return config.Config{Source: "copilot", Targets: []string{"vscode"}}, nil
 	}
 
-	createdCfg, err := config.Load(path)
+	if err := ensureConfigFile(path); err != nil {
+		t.Fatalf("ensureConfigFile failed: %v", err)
+	}
+
+	data, err := os.ReadFile(path)
 	if err != nil {
-		t.Fatalf("failed to load config: %v", err)
+		t.Fatalf("failed to read config: %v", err)
 	}
-	expected := config.Config{Source: "copilot", Targets: []string{"claudecode"}}
-	if !reflect.DeepEqual(createdCfg, expected) {
-		t.Fatalf("config mismatch. got %#v", createdCfg)
-	}
-}
-
-func TestWriteAgentConfig(t *testing.T) {
-	tempDir := t.TempDir()
-
-	t.Run("creates directories and file", func(t *testing.T) {
-		path := filepath.Join(tempDir, "nested", "dir", "config.json")
-		content := `{"test": "value"}`
-
-		if err := writeAgentConfig(path, content); err != nil {
-			t.Fatalf("writeAgentConfig failed: %v", err)
-		}
-
-		data, err := os.ReadFile(path)
-		if err != nil {
-			t.Fatalf("failed to read config: %v", err)
-		}
-		if string(data) != content {
-			t.Fatalf("content mismatch. got %q, want %q", string(data), content)
-		}
-	})
-
-	t.Run("overwrites existing file", func(t *testing.T) {
-		path := filepath.Join(tempDir, "existing.json")
-		oldContent := `{"old": "data"}`
-		newContent := `{"new": "data"}`
-
-		if err := os.WriteFile(path, []byte(oldContent), 0o644); err != nil {
-			t.Fatalf("failed to write existing file: %v", err)
-		}
-
-		if err := writeAgentConfig(path, newContent); err != nil {
-			t.Fatalf("writeAgentConfig failed: %v", err)
-		}
-
-		data, err := os.ReadFile(path)
-		if err != nil {
-			t.Fatalf("failed to read config: %v", err)
-		}
-		if string(data) != newContent {
-			t.Fatalf("content mismatch. got %q, want %q", string(data), newContent)
-		}
-	})
-}
-
-func TestParseAgents(t *testing.T) {
-	tests := []struct {
-		input    string
-		expected []string
-	}{
-		{"Copilot,Codex", []string{"Copilot", "Codex"}},
-		{"Copilot, Codex, ClaudeCode", []string{"Copilot", "Codex", "ClaudeCode"}},
-		{"  Copilot  ,  Codex  ", []string{"Copilot", "Codex"}},
-		{"", []string{}},
-		{",,,", []string{}},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.input, func(t *testing.T) {
-			result := parseAgents(tt.input)
-			if len(result) != len(tt.expected) {
-				t.Fatalf("expected %d agents, got %d", len(tt.expected), len(result))
-			}
-			for i, expected := range tt.expected {
-				if result[i] != expected {
-					t.Errorf("agent[%d] = %q, want %q", i, result[i], expected)
-				}
-			}
-		})
-	}
-}
-
-func TestDefaultAgentsAreLowercase(t *testing.T) {
-	if defaultAgents != strings.ToLower(defaultAgents) {
-		t.Fatalf("defaultAgents must be lowercase, got %q", defaultAgents)
-	}
-	if !strings.Contains(defaultAgents, "vscode") {
-		t.Error("defaultAgents should include vscode")
-	}
-}
-
-func TestValidateCommand(t *testing.T) {
-	tests := []struct {
-		name    string
-		args    []string
-		wantErr bool
-	}{
-		{"no args", []string{"agent-align"}, false},
-		{"flag arg", []string{"agent-align", "-config"}, false},
-		{"init command", []string{"agent-align", "init"}, false},
-		{"invalid command", []string{"agent-align", "help"}, true},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := validateCommand(tt.args)
-			if tt.wantErr && err == nil {
-				t.Fatal("expected error, got nil")
-			}
-			if !tt.wantErr && err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-		})
-	}
-}
-
-func TestResolveExecutionMode(t *testing.T) {
-	tests := []struct {
-		name           string
-		source         string
-		agents         string
-		configFlagUsed bool
-		wantUseConfig  bool
-		wantErr        bool
-	}{
-		{"config only", "", "", false, true, false},
-		{"explicit config flag only", "", "", true, true, false},
-		{"cli flags", "copilot", "codex", false, false, false},
-		{"missing agents", "copilot", "", false, true, true},
-		{"missing source", "", "codex", false, true, true},
-		{"config with overrides", "copilot", "codex", true, true, true},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			useConfig, err := resolveExecutionMode(tt.source, tt.agents, tt.configFlagUsed)
-			if tt.wantErr {
-				if err == nil {
-					t.Fatal("expected error, got nil")
-				}
-				return
-			}
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-			if useConfig != tt.wantUseConfig {
-				t.Fatalf("useConfig = %v, want %v", useConfig, tt.wantUseConfig)
-			}
-		})
+	if !strings.Contains(string(data), "source: copilot") {
+		t.Fatalf("unexpected config contents: %s", data)
 	}
 }

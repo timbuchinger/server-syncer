@@ -6,7 +6,7 @@ on:
     types: [opened, reopened, synchronize]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   test:
@@ -21,8 +21,18 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version: "1.25"
-      - name: Run go tests
-        run: go test ./...
+      - name: Run go tests with coverage
+        run: go test -coverprofile=coverage.out ./...
+      - name: Generate coverage report
+        run: |
+          go tool cover -html=coverage.out -o coverage-${{ github.run_id }}.html
+          mkdir -p coverage
+          mv coverage-${{ github.run_id }}.html coverage/coverage-${{ github.run_id }}.html
+          printf '{"run_id":"%s","commit":"%s","url":"https://%s.github.io/%s/coverage/coverage-%s.html"}\n' \
+            "${{ github.run_id }}" "${{ github.sha }}" "${{ github.repository_owner }}" "${{ github.event.repository.name }}" "${{ github.run_id }}" \
+            > coverage/run-${{ github.run_id }}.json
+          cp coverage/run-${{ github.run_id }}.json coverage/latest.json
+          cp coverage/coverage-${{ github.run_id }}.html coverage/latest.html
       - name: Build release binaries
         run: |
           set -euo pipefail
@@ -50,3 +60,28 @@ jobs:
               rm "dist/$bin"
             fi
           done
+      - name: Upload coverage report to GitHub Pages
+        env:
+          COVERAGE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/coverage/coverage-${{ github.run_id }}.html
+        run: |
+          mkdir -p /tmp/coverage
+          cp coverage/coverage-${{ github.run_id }}.html /tmp/coverage/
+          cp coverage/run-${{ github.run_id }}.json /tmp/coverage/
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin gh-pages || true
+          if git show-ref --verify --quiet refs/remotes/origin/gh-pages; then
+            git checkout -B gh-pages origin/gh-pages
+          else
+            git checkout --orphan gh-pages
+            git rm -rf .
+          fi
+          mkdir -p coverage
+          cp /tmp/coverage/coverage-${{ github.run_id }}.html coverage/
+          cp /tmp/coverage/run-${{ github.run_id }}.json coverage/
+          cp /tmp/coverage/coverage-${{ github.run_id }}.html coverage/latest.html
+          cp /tmp/coverage/run-${{ github.run_id }}.json coverage/latest.json
+          git add coverage
+          git commit -m "Add coverage run ${{ github.run_id }}" || true
+          git push origin gh-pages
+          echo "Coverage report deployed to ${COVERAGE_URL}"

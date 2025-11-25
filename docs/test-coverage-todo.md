@@ -12,11 +12,11 @@
    Cover `parseSelectionIndices`, `resolveExecutionMode`, and `validateCommand`.
    These cases prove the basic flow control logic stays correct.
 2. **Cover the interactive helpers** – supply synthetic readers for `promptSourceAgent`.
-   Exercise `promptTargetAgents` with those inputs to assert invalid-input loops stay
-   aligned.
+   Exercise `promptTargetAgents` with those inputs.
+   Assert invalid-input loops stay aligned with the expectations.
 3. **Test file operations** – verify `writeConfigFile` (and `ensureConfigFile`) creates
    directories/files correctly and surfaces helpful errors when writes fail.
-4. **Signal incremental progress** – rerun `go test ./...` after each of the earlier steps.
+4. **Signal incremental progress** – rerun `go test ./...` after each earlier step.
    This keeps the suite green before moving to the next item.
 
 Completing these steps should push `cmd/agent-align` coverage well above the
