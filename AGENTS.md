@@ -17,8 +17,10 @@ the next semantic version automatically.
 ## Markdown requirements
 
 All markdown changes must run through `markdownlint-cli2` and have every reported
-issue resolved before merging. Treat the tool as the single source of truth for
-markdown style so synchronized documentation stays consistent.
+issue resolved before merging. Run it via `npx markdownlint-cli2 --fix '**/*.md'`
+to download the CLI locally and fix issues in every markdown file. Treat the tool as
+the single source of truth for markdown style so synchronized documentation stays
+consistent.
 
 ## Recommended VS Code extensions
 
