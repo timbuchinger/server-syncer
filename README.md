@@ -25,6 +25,15 @@ formats required by each tool while treating one format as the source of truth.
    go run ./cmd/server-syncer -template ./configs/codex.json -source codex
    ```
 
+## Documentation linting
+
+When editing markdown, run the lint fixer to download the tool and apply all
+reported fixes:
+
+```bash
+npx markdownlint-cli2 --fix '**/*.md'
+```
+
 ## Configuration file
 
 `server-syncer` looks for a YAML configuration at one of the platform-specific locations:
