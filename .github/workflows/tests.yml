@@ -100,3 +100,6 @@ EOF
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         id: deploy
         uses: actions/deploy-pages@v4
+      - name: Announce coverage URL
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: echo "Coverage report: ${{ steps.deploy.outputs.page_url }}/coverage/${{ github.run_id }}/"
