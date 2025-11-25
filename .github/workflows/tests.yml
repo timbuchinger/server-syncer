@@ -71,24 +71,21 @@ jobs:
           dest="site/coverage/${RUN_ID}"
           mkdir -p "$dest"
           cp coverage.html "$dest/index.html"
-          cat > "$dest/run.json" <<EOF
-{"run_id": "${RUN_ID}", "commit": "${COMMIT_SHA}"}
-EOF
+          printf '{"run_id": "%s", "commit": "%s"}\n' "${RUN_ID}" "${COMMIT_SHA}" > "$dest/run.json"
           mkdir -p site/coverage
-          cat > site/coverage/index.html <<EOF
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <title>Agent Align Coverage Reports</title>
-</head>
-<body>
-  <h1>Agent Align Coverage Reports</h1>
-  <p>Latest report: <a href="./${RUN_ID}/">Run ${RUN_ID}</a></p>
-  <p>Commit: ${COMMIT_SHA}</p>
-</body>
-</html>
-EOF
+          printf '%s\n' \
+            '<!doctype html>' \
+            '<html lang="en">' \
+            '<head>' \
+            '  <meta charset="utf-8" />' \
+            '  <title>Agent Align Coverage Reports</title>' \
+            '</head>' \
+            '<body>' \
+            '  <h1>Agent Align Coverage Reports</h1>' \
+            "  <p>Latest report: <a href=\"./${RUN_ID}/\">Run ${RUN_ID}</a></p>" \
+            "  <p>Commit: ${COMMIT_SHA}</p>" \
+            '</body>' \
+            '</html>' > site/coverage/index.html
       - name: Setup GitHub Pages
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: actions/configure-pages@v5
