@@ -6,7 +6,8 @@ agent-align is a Go-based utility that keeps MCP configuration files aligned
 across coding agents such as Copilot, VSCode, Codex, Claude Code, Gemini, and
 others. Give it a single template file, and it will convert that configuration
 into the formats required by each tool while treating one format as the source
-of truth.
+of truth. Detailed documentation is hosted on GitHub Pages at
+<https://timbuchinger.github.io/agent-align/>.
 
 ## Repository layout
 
