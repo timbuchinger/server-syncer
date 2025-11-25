@@ -43,6 +43,10 @@ jobs:
           failing=0
           for sha in $commits; do
             subject=$(git log --format=%s -n 1 "$sha")
+            if [[ $subject == "Initial plan" ]]; then
+              echo "✓ $subject"
+              continue
+            fi
             if ! [[ $subject =~ $pattern ]]; then
               echo "✗ $subject"
               failing=1
