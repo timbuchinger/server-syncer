@@ -266,3 +266,39 @@ func TestValidateCommand(t *testing.T) {
 		})
 	}
 }
+
+func TestResolveExecutionMode(t *testing.T) {
+	tests := []struct {
+		name           string
+		source         string
+		agents         string
+		configFlagUsed bool
+		wantUseConfig  bool
+		wantErr        bool
+	}{
+		{"config only", "", "", false, true, false},
+		{"explicit config flag only", "", "", true, true, false},
+		{"cli flags", "copilot", "codex", false, false, false},
+		{"missing agents", "copilot", "", false, true, true},
+		{"missing source", "", "codex", false, true, true},
+		{"config with overrides", "copilot", "codex", true, true, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			useConfig, err := resolveExecutionMode(tt.source, tt.agents, tt.configFlagUsed)
+			if tt.wantErr {
+				if err == nil {
+					t.Fatal("expected error, got nil")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if useConfig != tt.wantUseConfig {
+				t.Fatalf("useConfig = %v, want %v", useConfig, tt.wantUseConfig)
+			}
+		})
+	}
+}

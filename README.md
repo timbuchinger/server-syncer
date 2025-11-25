@@ -47,6 +47,10 @@ Option | Description
 `-dry-run` | Only show what would be changed without applying changes
 `-confirm` | Skip user confirmation prompt (useful for cron jobs)
 
+Use `-source` and `-agents` together to run without a config file. Omit both
+flags (or only set `-config`) to pull values from the YAML config; the CLI
+rejects mixes of these options.
+
 ### Dry Run Mode
 
 Use `-dry-run` to preview the changes without modifying any files:
@@ -107,12 +111,14 @@ npx markdownlint-cli2 --fix '**/*.md'
 
 You can override this path with `-config <path>`. The file should describe the
 `source` agent and the list of `targets`; see `CONFIGURATION.md` for the schema
-and a sample layout. Config values are used unless you explicitly set `-source`
-or `-agents`. The CLI reads the actual configuration file for the selected
-source agent (for example, `~/.codex/config.toml` when `source: codex`) and uses
-it as the template automatically. If no config file is found and you omit
-`-agents`, the CLI still defaults to `copilot`, `vscode`, `codex`, `claudecode`,
-and `gemini`.
+and a sample layout. Config values are used unless you explicitly set both
+`-source` and `-agents`. The CLI reads the actual configuration file for the
+selected source agent (for example, `~/.codex/config.toml` when `source: codex`)
+and uses it as the template automatically. If you provide `-source` and
+`-agents`, the config file is ignored entirely and the CLI runs in a flag-only
+mode. These flags cannot be combined with `-config`. If no config file is found
+and you omit the CLI overrides, the CLI still defaults to `copilot`, `vscode`,
+`codex`, `claudecode`, and `gemini`.
 
 The tool will display the converted configurations for each agent and prompt
 for confirmation before writing the changes (unless `-confirm` is specified).

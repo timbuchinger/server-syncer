@@ -60,28 +60,45 @@ func main() {
 
 	flag.Parse()
 
-	if err := ensureConfigFile(*configPath); err != nil {
-		log.Fatalf("configuration unavailable: %v", err)
+	var configFlagUsed bool
+	flag.Visit(func(f *flag.Flag) {
+		if f.Name == "config" {
+			configFlagUsed = true
+		}
+	})
+
+	useConfig, modeErr := resolveExecutionMode(*sourceAgent, *agents, configFlagUsed)
+	if modeErr != nil {
+		log.Fatal(modeErr)
 	}
 
-	cfg, cfgErr := config.Load(*configPath)
-	if cfgErr != nil {
-		log.Fatalf("failed to load config %q: %v", *configPath, cfgErr)
-	}
-
-	finalSource := strings.TrimSpace(*sourceAgent)
-	if finalSource == "" {
-		finalSource = cfg.Source
-	}
-	if finalSource == "" {
-		log.Fatalf("source agent must be provided via -source or config file at %s", *configPath)
-	}
-
+	var finalSource string
 	var candidateAgents []string
-	if strings.TrimSpace(*agents) != "" {
-		candidateAgents = parseAgents(*agents)
-	} else {
+
+	if useConfig {
+		if err := ensureConfigFile(*configPath); err != nil {
+			log.Fatalf("configuration unavailable: %v", err)
+		}
+
+		cfg, cfgErr := config.Load(*configPath)
+		if cfgErr != nil {
+			log.Fatalf("failed to load config %q: %v", *configPath, cfgErr)
+		}
+		finalSource = cfg.Source
 		candidateAgents = cfg.Targets
+	} else {
+		finalSource = strings.TrimSpace(*sourceAgent)
+		candidateAgents = parseAgents(*agents)
+		if len(candidateAgents) == 0 {
+			log.Fatal("the -agents flag must list at least one agent")
+		}
+	}
+
+	if strings.TrimSpace(finalSource) == "" {
+		log.Fatal("source agent must be provided via a config file or -source/-agents")
+	}
+	if len(candidateAgents) == 0 {
+		log.Fatal("no target agents configured; provide them via config or -agents")
 	}
 
 	sourceCfg, err := syncer.GetAgentConfig(finalSource)
@@ -415,4 +432,17 @@ func validateCommand(args []string) error {
 		return nil
 	}
 	return fmt.Errorf("unknown command %q. Use -h for usage or run \"init\" to create a config.", arg)
+}
+
+func resolveExecutionMode(sourceFlag, agentsFlag string, configFlagUsed bool) (bool, error) {
+	sourceProvided := strings.TrimSpace(sourceFlag) != ""
+	agentsProvided := strings.TrimSpace(agentsFlag) != ""
+
+	if configFlagUsed && (sourceProvided || agentsProvided) {
+		return true, fmt.Errorf("-config cannot be combined with -source or -agents")
+	}
+	if sourceProvided != agentsProvided {
+		return true, fmt.Errorf("use -source and -agents together or rely entirely on the config file")
+	}
+	return !sourceProvided, nil
 }
