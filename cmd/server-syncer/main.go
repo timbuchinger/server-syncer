@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	_ "embed"
 	"errors"
 	"flag"
 	"fmt"
@@ -16,11 +17,12 @@ import (
 )
 
 const (
-	defaultAgents         = "Copilot,Codex,ClaudeCode,Gemini"
+	defaultAgents         = "Copilot,VSCode,Codex,ClaudeCode,Gemini"
 	defaultConfigTemplate = `source: codex
 targets:
   - gemini
   - copilot
+  - vscode
   - claudecode
 `
 )
@@ -40,8 +42,10 @@ func main() {
 
 	templatePath := flag.String("template", "", "path to the template file")
 	sourceAgent := flag.String("source", "", "source-of-truth agent name")
-	agents := flag.String("agents", "", "comma-separated list of agents to keep in sync (defaults to Copilot,Codex,ClaudeCode,Gemini)")
+	agents := flag.String("agents", "", "comma-separated list of agents to keep in sync (defaults to Copilot,VSCode,Codex,ClaudeCode,Gemini)")
 	configPath := flag.String("config", defaultConfigPath(), "path to YAML configuration file describing the source and target agents")
+	dryRun := flag.Bool("dry-run", false, "only show what would be changed without applying changes")
+	confirm := flag.Bool("confirm", false, "skip user confirmation prompt (useful for cron jobs)")
 
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: server-syncer [OPTIONS]\n\n")
@@ -97,10 +101,59 @@ func main() {
 		log.Fatalf("sync failed: %v", err)
 	}
 
-	fmt.Println("Converted configurations:")
-	for agent, cfg := range converted {
-		fmt.Printf("  %s -> %s\n", agent, cfg)
+	// Display the dry run results
+	fmt.Println("\n=== Dry Run Results ===")
+	fmt.Println("The following configuration changes will be made:")
+	fmt.Println()
+
+	for agent, cfgContent := range converted {
+		agentCfg, err := syncer.GetAgentConfig(agent)
+		if err != nil {
+			log.Printf("Warning: could not get config for agent %s: %v", agent, err)
+			continue
+		}
+		fmt.Printf("Agent: %s\n", agent)
+		fmt.Printf("  File: %s\n", agentCfg.FilePath)
+		fmt.Printf("  Format: %s\n", agentCfg.Format)
+		fmt.Printf("  Content:\n")
+		// Indent the content for readability
+		lines := strings.Split(cfgContent, "\n")
+		for _, line := range lines {
+			fmt.Printf("    %s\n", line)
+		}
+		fmt.Println()
 	}
+
+	// If dry-run mode, exit without making changes
+	if *dryRun {
+		fmt.Println("Dry run complete. No changes were made.")
+		return
+	}
+
+	// If not in confirm mode, ask for user confirmation
+	if !*confirm {
+		if !promptUser("Apply these changes? [y/N]: ", false) {
+			fmt.Println("Changes cancelled.")
+			return
+		}
+	}
+
+	// Apply the changes
+	fmt.Println("\nApplying changes...")
+	for agent, cfgContent := range converted {
+		agentCfg, err := syncer.GetAgentConfig(agent)
+		if err != nil {
+			log.Printf("Warning: could not get config for agent %s: %v", agent, err)
+			continue
+		}
+
+		if err := writeAgentConfig(agentCfg.FilePath, cfgContent); err != nil {
+			log.Printf("Error writing config for %s: %v", agent, err)
+			continue
+		}
+		fmt.Printf("  Updated: %s\n", agentCfg.FilePath)
+	}
+	fmt.Println("\nConfiguration sync complete.")
 }
 
 func parseAgents(agents string) []string {
@@ -204,6 +257,17 @@ func writeDefaultConfig(path string) error {
 		return fmt.Errorf("failed to ensure directory %q: %w", dir, err)
 	}
 	if err := os.WriteFile(path, []byte(defaultConfigTemplate), 0o644); err != nil {
+		return fmt.Errorf("failed to write config %q: %w", path, err)
+	}
+	return nil
+}
+
+func writeAgentConfig(path, content string) error {
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return fmt.Errorf("failed to ensure directory %q: %w", dir, err)
+	}
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		return fmt.Errorf("failed to write config %q: %w", path, err)
 	}
 	return nil
