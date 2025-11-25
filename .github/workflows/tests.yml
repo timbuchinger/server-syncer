@@ -5,6 +5,15 @@ on:
   pull_request:
     types: [opened, reopened, synchronize]
 
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -16,8 +25,10 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version: "1.25"
-      - name: Run go tests
-        run: go test ./...
+      - name: Run go tests with coverage
+        run: go test -coverprofile=coverage.out ./...
+      - name: Generate coverage HTML
+        run: go tool cover -html=coverage.out -o coverage.html
       - name: Build release binaries
         run: |
           set -euo pipefail
@@ -45,3 +56,47 @@ jobs:
               rm "dist/$bin"
             fi
           done
+      - name: Prepare coverage site
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          RUN_ID: ${{ github.run_id }}
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          mkdir -p site
+          if [ -d docs ]; then
+            cp -R docs/. site/
+          fi
+          dest="site/coverage/${RUN_ID}"
+          mkdir -p "$dest"
+          cp coverage.html "$dest/index.html"
+          cat <<EOF > "$dest/run.json"
+{"run_id": "${RUN_ID}", "commit": "${COMMIT_SHA}"}
+EOF
+          mkdir -p site/coverage
+          cat <<EOF > site/coverage/index.html
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Agent Align Coverage Reports</title>
+</head>
+<body>
+  <h1>Agent Align Coverage Reports</h1>
+  <p>Latest report: <a href="./${RUN_ID}/">Run ${RUN_ID}</a></p>
+  <p>Commit: ${COMMIT_SHA}</p>
+</body>
+</html>
+EOF
+      - name: Setup GitHub Pages
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/configure-pages@v5
+      - name: Upload GitHub Pages artifact
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - name: Deploy to GitHub Pages
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        id: deploy
+        uses: actions/deploy-pages@v4
