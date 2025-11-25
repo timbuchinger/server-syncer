@@ -68,6 +68,7 @@ jobs:
           mkdir -p /tmp/coverage
           cp coverage/coverage-${{ github.run_id }}.html /tmp/coverage/
           cp coverage/run-${{ github.run_id }}.json /tmp/coverage/
+          rm -rf coverage
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git fetch origin gh-pages || true
