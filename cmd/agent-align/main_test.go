@@ -115,8 +115,9 @@ func TestPromptSourceAgent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
-	if got != supportedAgents[0] {
-		t.Fatalf("expected %q, got %q", supportedAgents[0], got)
+	// Choice 1 should return the first agent from the sorted list, which is "claudecode"
+	if got != "claudecode" {
+		t.Fatalf("expected %q, got %q", "claudecode", got)
 	}
 }
 
