@@ -177,12 +177,13 @@ type CodexConfig struct {
 The user's YAML config file (see `CONFIGURATION.md`) drives the pipeline:
 
 ```yaml
-sourceAgent: codex
-targets:
-  agents:
-    - copilot
-    - claudecode
-    - gemini
+mcpServers:
+  sourceAgent: codex
+  targets:
+    agents:
+      - copilot
+      - claudecode
+      - gemini
 ```
 
 The syncer will:

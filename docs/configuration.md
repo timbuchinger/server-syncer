@@ -24,30 +24,48 @@ go run ./cmd/agent-align -config /path/to/config.yml
 The configuration file supports the following structure:
 
 ```yaml
-# The source agent to use as the source of truth
-sourceAgent: codex
+mcpServers:
+  sourceAgent: codex
+  targets:
+    agents:
+      - copilot
+      - claudecode
+    additionalTargets:
+      json:
+        - filePath: path/to/additional.json
+          jsonPath: .mcpServers
 
-targets:
-  agents:
-    - copilot
-    - claudecode
-  additional:
-    json:
-      - filePath: path/to/additional.json
-        jsonPath: .mcpServers
+extraTargets:
+  files:
+    - source: path/to/AGENTS.md
+      destinations:
+        - path/to/clone/AGENTS.md
+  directories:
+    - source: path/to/prompts
+      destinations:
+        - path: path/to/clone/prompts
+          flatten: true
+        - path: path/to/more/prompts
 ```
 
-- `sourceAgent` (string, required) – the agent whose native configuration acts
-  as the template. Valid values are `copilot`, `vscode`, `codex`, `claudecode`,
+- `mcpServers.sourceAgent` (string, required) – the agent whose native configuration
+  acts as the template. Valid values are `copilot`, `vscode`, `codex`, `claudecode`,
   and `gemini`. The legacy `source` attribute is still accepted when migrating
   old configs.
-- `targets.agents` (sequence, required when using agents) – the list of agent
-  names to update. Each entry must be one of the supported agents and cannot
-  duplicate `sourceAgent`.
-- `targets.additional.json` (sequence, optional) – a list of additional JSON files
-  to update with the MCP servers. Each entry must specify a `filePath`; set
-  `jsonPath` to the dot-separated node where the servers should live (omit it to
-  replace the entire file).
+- `mcpServers.targets.agents` (sequence, required when using agents) – the list
+  of agent names to update. Each entry must be one of the supported agents and
+  cannot duplicate `sourceAgent`.
+- `mcpServers.targets.additionalTargets.json` (sequence, optional) – a list of
+  additional JSON files to update with the MCP servers. Each entry must specify
+  a `filePath`; set `jsonPath` to the dot-separated node where the servers
+  should live (omit it to replace the entire file).
+- `extraTargets.files` (sequence, optional) – copies a single file into one or
+  more destinations. Each entry must list the `source` and at least one
+  `destinations` entry.
+- `extraTargets.directories` (sequence, optional) – copies every file within a
+  directory from `source` to each listed destination. Each destination entry must
+  include a `path` and may set `flatten: true` to drop the source directory
+  structure when writing the files.
 
 ## Supported Agents
 

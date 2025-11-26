@@ -24,13 +24,14 @@ of truth. Detailed documentation is hosted on GitHub Pages at
 2. Create a config; for example, save this to `agent-align.yml` next to the binary:
 
    ```yaml
-   sourceAgent: codex
-   targets:
-     agents:
-       - copilot
-       - vscode
-       - claudecode
-       - gemini
+   mcpServers:
+     sourceAgent: codex
+     targets:
+       agents:
+         - copilot
+         - vscode
+         - claudecode
+         - gemini
    ```
 
 3. Run the app with your config file:
@@ -117,12 +118,13 @@ npx markdownlint-cli2 --fix '**/*.md'
 - macOS: `/usr/local/etc/agent-align.yml`
 - Windows: `C:\ProgramData\agent-align\config.yml`
 
-You can override this path with `-config <path>`. The file should describe the
-`sourceAgent` that acts as the source of truth and the `targets` block that
-drives updates. Use `targets.agents` to list the supported agent names and add
-entries under `targets.additional.json` to mirror the MCP payload into other
-JSON files (each entry specifies `filePath` and the `jsonPath` where the servers
-belong). See `CONFIGURATION.md` for the schema and examples. Config values are
+You can override this path with `-config <path>`. The file should contain an
+`mcpServers` block that describes the `sourceAgent` (the template) and the
+`targets` block that drives updates. Use `targets.agents` to list the supported
+agent names and add entries under `targets.additionalTargets.json` to mirror the
+MCP payload into other JSON files (each entry specifies `filePath` and the
+`jsonPath` where the servers belong). See `CONFIGURATION.md` for the schema and
+examples. Config values are
 used unless you explicitly set both `-source` and `-agents`. The CLI reads the
 actual configuration file for the selected source agent (for example,
 `~/.codex/config.toml` when `sourceAgent: codex`) and uses it as the template
@@ -130,6 +132,13 @@ automatically. If you provide `-source` and `-agents`, the config file is ignore
 entirely and the CLI runs in a flag-only mode. These flags cannot be combined
 with `-config`. If no config file is found and you omit the CLI overrides, the
 CLI still defaults to `copilot`, `vscode`, `codex`, `claudecode`, and `gemini`.
+
+An optional top-level `extraTargets` block copies files or directories alongside
+the MCP sync. Use `extraTargets.files` to mirror a single file into multiple
+destinations (for example, `AGENTS.md` into multiple worktrees). Use
+`extraTargets.directories` to copy a folder to one or more other locations
+(`destinations` is a list of objects with `path` and optional `flatten`) so you
+can decide which destinations keep their directory structure.
 
 The tool will display the converted configurations for each agent and prompt
 for confirmation before writing the changes (unless `-confirm` is specified).

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -78,6 +79,7 @@ func main() {
 	var finalSource string
 	var candidateAgents []string
 	var additionalTargets []config.AdditionalJSONTarget
+	var extraTargets config.ExtraTargetsConfig
 
 	if useConfig {
 		if err := ensureConfigFile(*configPath); err != nil {
@@ -91,6 +93,7 @@ func main() {
 		finalSource = cfg.SourceAgent
 		candidateAgents = cfg.Targets.Agents
 		additionalTargets = cfg.Targets.Additional.JSON
+		extraTargets = cfg.ExtraTargets
 	} else {
 		finalSource = strings.TrimSpace(*sourceAgent)
 		candidateAgents = parseAgents(*agents)
@@ -102,8 +105,8 @@ func main() {
 	if strings.TrimSpace(finalSource) == "" {
 		log.Fatal("source agent must be provided via a config file or -source/-agents")
 	}
-	if len(candidateAgents) == 0 && len(additionalTargets) == 0 {
-		log.Fatal("no target agents or additional destinations configured; provide agents via config/flags or add additional targets")
+	if len(candidateAgents) == 0 && len(additionalTargets) == 0 && extraTargets.IsZero() {
+		log.Fatal("no target agents, additional destinations, or extra copy targets configured; provide agents via config/flags or add extra targets")
 	}
 
 	sourceCfg, err := syncer.GetAgentConfig(finalSource)
@@ -170,6 +173,29 @@ func main() {
 		}
 	}
 
+	if !extraTargets.IsZero() {
+		fmt.Println("Extra copy targets:")
+		for _, target := range extraTargets.Files {
+			fmt.Printf("File Source: %s\n", target.Source)
+			for _, dest := range target.Destinations {
+				fmt.Printf("  -> %s\n", dest)
+			}
+			fmt.Println()
+		}
+		for _, target := range extraTargets.Directories {
+			fmt.Printf("Directory Source: %s\n", target.Source)
+			fmt.Println("  Destinations:")
+			for _, dest := range target.Destinations {
+				label := dest.Path
+				if dest.Flatten {
+					label = fmt.Sprintf("%s (flatten)", label)
+				}
+				fmt.Printf("    - %s\n", label)
+			}
+			fmt.Println()
+		}
+	}
+
 	// If dry-run mode, exit without making changes
 	if *dryRun {
 		fmt.Println("Dry run complete. No changes were made.")
@@ -213,6 +239,32 @@ func main() {
 		fmt.Printf("  Updated additional JSON: %s\n", target.FilePath)
 		if target.JSONPath != "" {
 			fmt.Printf("    JSON Path: %s\n", target.JSONPath)
+		}
+	}
+
+	for _, target := range extraTargets.Files {
+		if err := copyExtraFileTarget(target); err != nil {
+			log.Printf("Error copying extra file %s: %v", target.Source, err)
+			continue
+		}
+		fmt.Printf("  Copied extra file: %s -> %d destinations\n", target.Source, len(target.Destinations))
+	}
+	for _, target := range extraTargets.Directories {
+		count, err := copyExtraDirectoryTarget(target)
+		if err != nil {
+			log.Printf("Error copying extra directory %s: %v", target.Source, err)
+			continue
+		}
+		fmt.Printf("  Copied extra directory: %s -> %d destination(s) (%d files)\n", target.Source, len(target.Destinations), count)
+		var flattened bool
+		for _, dest := range target.Destinations {
+			if dest.Flatten {
+				flattened = true
+				break
+			}
+		}
+		if flattened {
+			fmt.Println("    Applied flatten to some destinations")
 		}
 	}
 	fmt.Println("\nConfiguration sync complete.")
@@ -332,10 +384,19 @@ func promptForConfig() (config.Config, error) {
 	if err != nil {
 		return config.Config{}, err
 	}
+	additionalJSON, err := promptAdditionalJSONTargets(reader)
+	if err != nil {
+		return config.Config{}, err
+	}
+	additional := config.AdditionalTargets{}
+	if len(additionalJSON) > 0 {
+		additional.JSON = additionalJSON
+	}
 	return config.Config{
 		SourceAgent: source,
 		Targets: config.TargetsConfig{
-			Agents: targets,
+			Agents:     targets,
+			Additional: additional,
 		},
 	}, nil
 }
@@ -444,6 +505,81 @@ func parseSelectionIndices(input string) ([]int, error) {
 		selections = append(selections, value)
 	}
 	return selections, nil
+}
+
+func promptAdditionalJSONTargets(reader *bufio.Reader) ([]config.AdditionalJSONTarget, error) {
+	fmt.Println("\nAdd optional MCP destinations (custom files outside the built-in agents).")
+	var targets []config.AdditionalJSONTarget
+
+	for {
+		addMore, err := promptYesNoInput(reader, "Add an additional JSON destination? [y/N]: ", false)
+		if err != nil {
+			return nil, err
+		}
+		if !addMore {
+			return targets, nil
+		}
+
+		filePath, err := promptRequiredValue(reader, "Enter the destination file path: ", "Please enter a file path.")
+		if err != nil {
+			return nil, err
+		}
+		jsonPath, err := promptRequiredValue(reader, "Enter the JSON path within that file (e.g. .mcpServers): ", "Please enter a JSON path.")
+		if err != nil {
+			return nil, err
+		}
+
+		targets = append(targets, config.AdditionalJSONTarget{
+			FilePath: filePath,
+			JSONPath: jsonPath,
+		})
+	}
+}
+
+func promptYesNoInput(reader *bufio.Reader, prompt string, defaultYes bool) (bool, error) {
+	for {
+		fmt.Print(prompt)
+		input, err := reader.ReadString('\n')
+		if err != nil && !errors.Is(err, io.EOF) {
+			return false, err
+		}
+
+		response := strings.TrimSpace(strings.ToLower(input))
+		if response == "" {
+			return defaultYes, nil
+		}
+
+		switch response {
+		case "y", "yes":
+			return true, nil
+		case "n", "no":
+			return false, nil
+		default:
+			fmt.Println("Please answer 'y' or 'n'.")
+			if err != nil && errors.Is(err, io.EOF) {
+				return defaultYes, nil
+			}
+		}
+	}
+}
+
+func promptRequiredValue(reader *bufio.Reader, prompt, emptyMsg string) (string, error) {
+	for {
+		fmt.Print(prompt)
+		input, err := reader.ReadString('\n')
+		if err != nil && !errors.Is(err, io.EOF) {
+			return "", err
+		}
+		value := strings.TrimSpace(input)
+		if value == "" {
+			fmt.Println(emptyMsg)
+			if err != nil && errors.Is(err, io.EOF) {
+				return "", errors.New(emptyMsg)
+			}
+			continue
+		}
+		return value, nil
+	}
 }
 
 func writeConfigFile(path string, cfg config.Config) error {

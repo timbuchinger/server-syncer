@@ -156,6 +156,9 @@ func TestWriteConfigFileCreatesPath(t *testing.T) {
 	if !strings.Contains(content, "agents:") {
 		t.Fatalf("expected agents block in config: %s", data)
 	}
+	if !strings.Contains(content, "mcpServers:") {
+		t.Fatalf("expected mcpServers block in config: %s", data)
+	}
 }
 
 func TestEnsureConfigFileCreatesFile(t *testing.T) {
@@ -193,5 +196,37 @@ func TestEnsureConfigFileCreatesFile(t *testing.T) {
 	}
 	if !strings.Contains(content, "agents:") {
 		t.Fatalf("expected agents block in config: %s", data)
+	}
+	if !strings.Contains(content, "mcpServers:") {
+		t.Fatalf("expected mcpServers block in config: %s", data)
+	}
+}
+
+func TestPromptAdditionalJSONTargetsNone(t *testing.T) {
+	reader := bufio.NewReader(strings.NewReader("n\n"))
+	targets, err := promptAdditionalJSONTargets(reader)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if len(targets) != 0 {
+		t.Fatalf("expected no targets, got %v", targets)
+	}
+}
+
+func TestPromptAdditionalJSONTargetsMultiple(t *testing.T) {
+	input := strings.NewReader("y\n\n/path/one.json\n.mcpServers\nY\n/tmp/two.json\n\n.payload\nn\n")
+	reader := bufio.NewReader(input)
+	targets, err := promptAdditionalJSONTargets(reader)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if len(targets) != 2 {
+		t.Fatalf("expected 2 targets, got %v", targets)
+	}
+	if targets[0].FilePath != "/path/one.json" || targets[0].JSONPath != ".mcpServers" {
+		t.Fatalf("unexpected first target: %#v", targets[0])
+	}
+	if targets[1].FilePath != "/tmp/two.json" || targets[1].JSONPath != ".payload" {
+		t.Fatalf("unexpected second target: %#v", targets[1])
 	}
 }

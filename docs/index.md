@@ -34,12 +34,15 @@ Agent Align looks for a YAML configuration at one of the platform-specific locat
 - **macOS**: `/usr/local/etc/agent-align.yml`
 - **Windows**: `C:\ProgramData\agent-align\config.yml`
 
-You can override this path with `-config <path>`. The file should describe the
-`sourceAgent` and the `targets` block; use `targets.agents` for the supported
-agents and add `targets.additional.json` entries to mirror the servers into
-other JSON files. Agent Align automatically reads the real configuration file
-for the source agent (for example, `~/.codex/config.toml` when
-`sourceAgent: codex`). See the [Configuration Guide](configuration.md) for the
+You can override this path with `-config <path>`. The file should contain an
+`mcpServers` block describing the `sourceAgent` and its `targets`; use
+`targets.agents` for the supported agents and add
+`targets.additionalTargets.json` entries to mirror the servers into other JSON
+files. An optional `extraTargets` block copies arbitrary files or directories to
+keep related artifacts (such as prompts or docs) in sync. Agent Align
+automatically reads the real configuration file for the source agent (for
+example, `~/.codex/config.toml` when `sourceAgent: codex`). See the
+[Configuration Guide](configuration.md) for the
 schema and a sample layout.
 
 ## Testing

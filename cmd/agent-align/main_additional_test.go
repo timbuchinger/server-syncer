@@ -102,6 +102,9 @@ func TestRunInitCommand_CreateNewAndWrite(t *testing.T) {
 	if !strings.Contains(content, "sourceAgent: copilot") {
 		t.Fatalf("unexpected config contents: %s", data)
 	}
+	if !strings.Contains(content, "mcpServers:") {
+		t.Fatalf("expected mcpServers block in config: %s", data)
+	}
 }
 
 func TestRunInitCommand_WriteFailure(t *testing.T) {
