@@ -123,7 +123,10 @@ func (s *Syncer) Sync(template Template) (SyncResult, error) {
 	result := make(map[string]string, len(s.Agents))
 	for _, agent := range s.Agents {
 		// Deep copy servers for each agent to avoid cross-agent transformation interference
-		agentServers := deepCopyServers(servers)
+		agentServers, err := deepCopyServers(servers)
+		if err != nil {
+			return SyncResult{}, err
+		}
 
 		// Apply agent-specific transformations
 		transformer := transforms.GetTransformer(agent)
@@ -139,18 +142,17 @@ func (s *Syncer) Sync(template Template) (SyncResult, error) {
 
 // deepCopyServers creates a deep copy of the servers map to avoid
 // transformations from one agent affecting another.
-func deepCopyServers(servers map[string]interface{}) map[string]interface{} {
+func deepCopyServers(servers map[string]interface{}) (map[string]interface{}, error) {
 	// Use JSON marshal/unmarshal for deep copy
 	data, err := json.Marshal(servers)
 	if err != nil {
-		// If marshaling fails, return an empty map
-		return make(map[string]interface{})
+		return nil, fmt.Errorf("failed to copy server configuration: %w", err)
 	}
 	var copy map[string]interface{}
 	if err := json.Unmarshal(data, &copy); err != nil {
-		return make(map[string]interface{})
+		return nil, fmt.Errorf("failed to copy server configuration: %w", err)
 	}
-	return copy
+	return copy, nil
 }
 
 func formatConfig(agent string, servers map[string]interface{}) string {

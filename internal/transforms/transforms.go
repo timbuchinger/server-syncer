@@ -109,7 +109,7 @@ func validateNetworkServer(name string, server map[string]interface{}) error {
 	}
 
 	if len(missing) > 0 {
-		return fmt.Errorf("copilot validation error: network-based server %q is missing required field(s): %s. Network servers must have both 'type' (http or sse) and 'url' fields",
+		return fmt.Errorf("copilot validation error: network-based server %q is missing required field(s): %s. Network servers must have both 'type' and 'url' fields",
 			name, strings.Join(missing, ", "))
 	}
 
