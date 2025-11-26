@@ -14,6 +14,25 @@ all the agents stay in sync.
 All commits must follow Conventional Commits so the release workflow can determine
 the next semantic version automatically.
 
+## Commit message requirements
+
+Every commit message must follow these rules:
+
+- **Type is required**: Start with a valid type (e.g., `feat:`, `fix:`, `docs:`,
+  `chore:`, `refactor:`, `test:`, `ci:`)
+- **Subject is required**: Must have a non-empty subject after the type
+- **Body line length**: If including a body, each line must not exceed 100
+  characters
+
+Example valid commit message:
+
+```text
+feat: add VS Code agent support
+
+Add VS Code as a supported agent with config path ~/.config/Code/User/mcp.json
+and root element "servers".
+```
+
 ## Go build cache
 
 Set the Go build cache to a writable directory before running `go build` or
