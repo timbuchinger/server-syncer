@@ -1,6 +1,7 @@
 {
   "branches": ["main"],
   "tagFormat": "v${version}",
+  "initialVersion": "0.0.1",
   "plugins": [
     "./scripts/manual-release-override.cjs",
     "@semantic-release/release-notes-generator",
