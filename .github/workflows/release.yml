@@ -45,12 +45,36 @@ jobs:
       name: release-approval
     outputs:
       release_type: ${{ steps.capture.outputs.release_type }}
+      release_version: ${{ steps.compute-version.outputs.release_version || 'unknown' }}
     steps:
-      - name: Await approval
-        run: |
-          echo "Manual approval recorded with release_type=${{ github.event.inputs.release_type || 'auto' }}"
       - id: capture
         run: echo "release_type=${{ github.event.inputs.release_type || 'auto' }}" >> "$GITHUB_OUTPUT"
+      - id: compute-version
+        if: steps.capture.outputs.release_type != 'none'
+        env:
+          RELEASE_TYPE_OVERRIDE: ${{ steps.capture.outputs.release_type }}
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          NO_COLOR: 1
+        run: |
+          set -euo pipefail
+          log=$(mktemp)
+          npx semantic-release --dry-run > "$log" 2>&1 || true
+          version=$(grep -o -m1 'The next release version is [^ ]*' "$log" | awk '{print $NF}' || true)
+          if [ -n "$version" ]; then
+            echo "release_version=$version" >> "$GITHUB_OUTPUT"
+          else
+            echo "release_version=unknown" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Approval summary
+        run: |
+          release_type=${{ steps.capture.outputs.release_type }}
+          release_version=${{ steps.compute-version.outputs.release_version || 'unknown' }}
+          echo "Manual approval recorded with release_type=$release_type"
+          if [ "$release_version" != "unknown" ]; then
+            echo "Upcoming release version: $release_version"
+          else
+            echo "Release version not determined (release_type=$release_type)"
+          fi
 
   release:
     needs: [tests, verify]
