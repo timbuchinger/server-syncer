@@ -363,10 +363,11 @@ func dedupeTargets(targets []AgentTarget) []AgentTarget {
 		if name == "" {
 			continue
 		}
-		if _, exists := seen[name]; exists {
+		key := name + "|" + strings.TrimSpace(target.PathOverride)
+		if _, exists := seen[key]; exists {
 			continue
 		}
-		seen[name] = struct{}{}
+		seen[key] = struct{}{}
 		out = append(out, AgentTarget{
 			Name:         name,
 			PathOverride: strings.TrimSpace(target.PathOverride),

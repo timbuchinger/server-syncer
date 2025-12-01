@@ -7,9 +7,11 @@ mcpServers:
       - name: vscode
       - name: codex
         path: /custom/.codex/config.toml
-      - claudecode
-      - gemini
-      - kilocode
+      - name: claudecode
+      - name: gemini
+      - name: gemini
+        path: /work/alt/.gemini/settings.json
+      - name: kilocode
     additionalTargets:
       json:
         - filePath: /path/to/additional_targets.json

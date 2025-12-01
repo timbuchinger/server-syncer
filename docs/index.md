@@ -42,9 +42,11 @@ Override the path with `-config <path>`. Within that file, define an
 `mcpServers` block with an optional `configPath` (defaults to
 `agent-align-mcp.yml` next to the config) and a `targets` block that lists the
 agents to update. Each agent entry can optionally set `path` to override the
-default location for that tool. Add entries under `targets.additionalTargets.json`
-to mirror the MCP payload into other JSON files (each entry specifies `filePath`
-and the `jsonPath` where the servers belong). See the
+default location for that tool, and you can repeat an agent with different
+paths to write the same format to multiple destinations. Add entries under
+`targets.additionalTargets.json` to mirror the MCP payload into other JSON files
+(each entry specifies `filePath` and the `jsonPath` where the servers belong).
+See the
 [Configuration Guide](configuration.md) for the schema and examples. The MCP
 servers themselves live in a separate YAML file, and the CLI applies
 agent-specific transformations when writing each target.

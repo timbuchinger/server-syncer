@@ -7,9 +7,11 @@ mcpServers:
       - name: vscode
       - name: codex
         path: /custom/.codex/config.toml
-      - claudecode
-      - gemini
-      - kilocode
+      - name: claudecode
+      - name: gemini
+      - name: gemini
+        path: ~/.qwen/settings.json # qwen uses the same format as gemini, so re-use that target here
+      - name: kilocode
     additionalTargets:
       json:
         - filePath: /path/to/additional_targets.json

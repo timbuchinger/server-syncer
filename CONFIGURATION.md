@@ -76,8 +76,10 @@ extraTargets:
     to `agent-align-mcp.yml` next to the target config when omitted.
   - `targets` (mapping, required) – agents to write plus optional extras.
     - `agents` (sequence, required) – list of agent names or objects with `name`
-      and optional `path` override for the destination file. Duplicates and
-      blank entries are ignored.
+      and optional `path` override for the destination file. Repeat an agent
+      with different `path` values to write the same format to multiple
+      destinations. Exact duplicate `name + path` combinations and blank entries
+      are ignored.
     - `additionalTargets.json` (sequence, optional) – mirror the MCP payload
       into other JSON files. Each entry must specify `filePath` and may set
       `jsonPath` (dot-separated) where the servers should be placed; omit

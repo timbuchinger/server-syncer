@@ -248,11 +248,6 @@ func normalizeTargets(targets TargetsConfig) TargetsConfig {
 		if name == "" {
 			continue
 		}
-		if _, exists := seen[name]; exists {
-			continue
-		}
-		seen[name] = struct{}{}
-
 		path := strings.TrimSpace(target.Path)
 		if path != "" {
 			expanded, err := expandUserPath(path)
@@ -260,6 +255,11 @@ func normalizeTargets(targets TargetsConfig) TargetsConfig {
 				path = expanded
 			}
 		}
+		key := name + "|" + path
+		if _, exists := seen[key]; exists {
+			continue
+		}
+		seen[key] = struct{}{}
 		agents = append(agents, AgentTarget{
 			Name: name,
 			Path: path,
