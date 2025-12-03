@@ -3,6 +3,7 @@ package syncer
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -171,7 +172,7 @@ func formatConfig(config AgentConfig, servers map[string]interface{}) string {
 	case "gemini":
 		return formatGeminiConfig(config, servers)
 	default:
-		return formatToJSON(config.NodeName, servers)
+		return formatJSONConfig(config, servers)
 	}
 }
 
@@ -206,6 +207,38 @@ func formatToJSON(nodeName string, servers map[string]interface{}) string {
 	}
 
 	data, err := json.MarshalIndent(output, "", "  ")
+	if err != nil {
+		return ""
+	}
+	return string(data)
+}
+
+// formatJSONConfig merges the provided servers into the existing JSON file when
+// a NodeName is specified. This preserves unrelated top-level settings (like
+// editor prefs) while replacing only the MCP servers node. If the existing
+// file is missing or invalid JSON, a new object is created containing the
+// nodeName or servers as appropriate.
+func formatJSONConfig(cfg AgentConfig, servers map[string]interface{}) string {
+	// If no node name is provided, just render servers as the full file.
+	if cfg.NodeName == "" {
+		return formatToJSON("", servers)
+	}
+
+	var existing map[string]interface{}
+	if data, err := os.ReadFile(cfg.FilePath); err == nil {
+		if err := json.Unmarshal(data, &existing); err != nil {
+			// If existing file can't be parsed, log a warning and fall back
+			// to an empty object so we can write a sane JSON file.
+			log.Printf("warning: failed to parse existing JSON %q: %v; overwriting mcp node", cfg.FilePath, err)
+			existing = make(map[string]interface{})
+		}
+	}
+	if existing == nil {
+		existing = make(map[string]interface{})
+	}
+
+	existing[cfg.NodeName] = servers
+	data, err := json.MarshalIndent(existing, "", "  ")
 	if err != nil {
 		return ""
 	}

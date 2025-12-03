@@ -175,6 +175,52 @@ func TestFormatGeminiConfigPreservesExistingSettings(t *testing.T) {
 	}
 }
 
+func TestFormatClaudeConfigPreservesExistingSettings(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "claude.json")
+	existing := `{
+  "theme": "light",
+  "mcpServers": {
+	"old": {
+	  "command": "node"
+	}
+  },
+  "other": true
+}`
+	if err := os.WriteFile(path, []byte(existing), 0o644); err != nil {
+		t.Fatalf("failed to write existing config: %v", err)
+	}
+
+	servers := map[string]interface{}{
+		"new": map[string]interface{}{
+			"command": "npx",
+		},
+	}
+	cfg := AgentConfig{Name: "claudecode", FilePath: path, NodeName: "mcpServers", Format: "json"}
+	result := formatConfig(cfg, servers)
+
+	var parsed map[string]interface{}
+	if err := json.Unmarshal([]byte(result), &parsed); err != nil {
+		t.Fatalf("result not valid JSON: %v", err)
+	}
+	if parsed["theme"] != "light" {
+		t.Fatalf("theme should be preserved, got %v", parsed["theme"])
+	}
+	if parsed["other"] != true {
+		t.Fatalf("other should be preserved, got %v", parsed["other"])
+	}
+	mcpServers, ok := parsed["mcpServers"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("mcpServers missing in output: %v", parsed)
+	}
+	if _, ok := mcpServers["new"]; !ok {
+		t.Fatal("new server should be present in mcpServers block")
+	}
+	if _, ok := mcpServers["old"]; ok {
+		t.Fatal("old server should have been replaced")
+	}
+}
+
 func TestFormatGeminiConfigWithoutExistingFile(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "settings.json")
 	servers := map[string]interface{}{
