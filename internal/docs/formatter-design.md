@@ -20,7 +20,7 @@ Agent | Format | Root Element | Default Location
 Copilot | JSON | `mcpServers` | `~/.copilot/mcp-config.json`
 VS Code | JSON | `servers` | `~/.config/Code/User/mcp.json`
 Codex | TOML | `mcp_servers` | `~/.codex/config.toml`
-ClaudeCode | JSON | `mcpServers` | `~/.claude.json`
+ClaudeCode | JSON | `mcpServers` | `~/.claude/.claude.json`
 Gemini | JSON | `mcpServers` | `~/.gemini/settings.json`
 Kilocode | JSON | `mcpServers` | Platform-dependent (see note below)
 

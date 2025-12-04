@@ -99,7 +99,7 @@ Agent | Config File | Format | Root
 copilot | `~/.copilot/mcp-config.json` | JSON | `mcpServers`
 vscode | `~/.config/Code/User/mcp.json` | JSON | `servers`
 codex | `~/.codex/config.toml` | TOML | `mcp_servers`
-claudecode | `~/.claude.json` | JSON | `mcpServers`
+claudecode | `~/.claude/.claude.json` | JSON | `mcpServers`
 gemini | `~/.gemini/settings.json` | JSON | `mcpServers`
 kilocode | Platform-dependent (see note below) | JSON | `mcpServers`
 
