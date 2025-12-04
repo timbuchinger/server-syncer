@@ -73,7 +73,7 @@ func GetAgentConfig(agent, overridePath string) (AgentConfig, error) {
 	case "claudecode":
 		return AgentConfig{
 			Name:     name,
-			FilePath: applyOverride(overridePath, filepath.Join(homeDir, ".claude", ".claude.json")),
+			FilePath: applyOverride(overridePath, filepath.Join(homeDir, ".claude.json")),
 			NodeName: "mcpServers",
 			Format:   "json",
 		}, nil
