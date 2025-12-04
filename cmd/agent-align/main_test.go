@@ -150,3 +150,10 @@ func TestPromptTargetAgents(t *testing.T) {
 		t.Fatalf("unexpected targets: %v", targets)
 	}
 }
+
+func TestVersionVariableDefault(t *testing.T) {
+	// The version variable should have a default value of "dev"
+	if version != "dev" {
+		t.Fatalf("expected default version to be 'dev', got %q", version)
+	}
+}

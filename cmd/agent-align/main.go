@@ -23,6 +23,9 @@ import (
 	"agent-align/internal/syncer"
 )
 
+// version is set at build time via -ldflags.
+var version = "dev"
+
 var (
 	promptUser    = askYes
 	collectConfig = promptForConfig
@@ -32,6 +35,11 @@ var (
 var exampleConfig string
 
 func main() {
+	// Handle -version flag before any other processing
+	if len(os.Args) == 2 && (os.Args[1] == "-version" || os.Args[1] == "--version") {
+		fmt.Printf("agent-align version %s\n", version)
+		return
+	}
 	if len(os.Args) > 1 && os.Args[1] == "init" {
 		if err := runInitCommand(os.Args[2:]); err != nil {
 			log.Fatalf("init failed: %v", err)
@@ -51,9 +59,11 @@ func main() {
 	confirm := flag.Bool("confirm", false, "skip user confirmation prompt (useful for cron jobs)")
 
 	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "agent-align version %s\n\n", version)
 		fmt.Fprintf(os.Stderr, "Usage: agent-align [OPTIONS]\n\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
 		flag.PrintDefaults()
+		fmt.Fprintf(os.Stderr, "  -version\n    \tprint version and exit\n")
 		fmt.Fprintf(os.Stderr, "\nDefault config file location: %s\n", defaultConfigPath())
 		fmt.Fprintf(os.Stderr, "Default MCP config file location: %s\n", defaultMCPConfigPath(defaultConfigPath()))
 		fmt.Fprintf(os.Stderr, "\nExample config file:\n%s\n", exampleConfig)
