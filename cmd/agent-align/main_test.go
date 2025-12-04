@@ -2,7 +2,9 @@ package main
 
 import (
 	"bufio"
+	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -155,5 +157,34 @@ func TestVersionVariableDefault(t *testing.T) {
 	// The version variable should have a default value of "dev"
 	if version != "dev" {
 		t.Fatalf("expected default version to be 'dev', got %q", version)
+	}
+}
+
+func TestVersionFlagOutput(t *testing.T) {
+	// Build the binary with a custom version and test -version flag output
+	tmpDir := t.TempDir()
+	binPath := filepath.Join(tmpDir, "agent-align-test")
+	testVersion := "1.2.3-test"
+
+	// Build the binary with -ldflags to set the version
+	buildCmd := exec.Command("go", "build",
+		"-ldflags", fmt.Sprintf("-X main.version=%s", testVersion),
+		"-o", binPath,
+		"./")
+	buildCmd.Env = append(os.Environ(), "GOCACHE=/tmp/agent-align-go-cache")
+	if output, err := buildCmd.CombinedOutput(); err != nil {
+		t.Fatalf("failed to build test binary: %v\n%s", err, output)
+	}
+
+	// Run the binary with -version flag
+	versionCmd := exec.Command(binPath, "-version")
+	output, err := versionCmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("failed to run -version command: %v\n%s", err, output)
+	}
+
+	expected := fmt.Sprintf("agent-align version %s\n", testVersion)
+	if string(output) != expected {
+		t.Fatalf("unexpected -version output:\ngot: %q\nwant: %q", string(output), expected)
 	}
 }

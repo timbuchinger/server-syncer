@@ -47,6 +47,16 @@ jobs:
       release_type: ${{ steps.capture.outputs.release_type }}
       release_version: ${{ steps.compute-version.outputs.release_version || 'unknown' }}
     steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install Node dependencies
+        run: npm ci
       - id: capture
         run: echo "release_type=${{ github.event.inputs.release_type || 'auto' }}" >> "$GITHUB_OUTPUT"
       - id: compute-version
