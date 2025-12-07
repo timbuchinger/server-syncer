@@ -227,15 +227,16 @@ func parseSkillFile(path string) (Skill, error) {
 
 // parseFrontmatter extracts name and description from YAML frontmatter
 func parseFrontmatter(content string) (name, description string, err error) {
-	// Check if content starts with frontmatter delimiter
-	if len(content) < 4 || content[:3] != "---" {
+	// Check if content has minimum required length: "---\n" + content + "\n---"
+	// Minimum valid: "---\nx\n---" = 10 characters
+	if len(content) < 10 || content[:3] != "---" {
 		return "", "", fmt.Errorf("missing frontmatter delimiter")
 	}
 
-	// Find the closing delimiter
+	// Find the closing delimiter - start after opening "---\n" (position 4)
 	endIdx := -1
-	for i := 3; i < len(content)-2; i++ {
-		if content[i] == '\n' && content[i+1:i+4] == "---" {
+	for i := 4; i < len(content)-3; i++ {
+		if content[i] == '\n' && i+4 <= len(content) && content[i+1:i+4] == "---" {
 			endIdx = i
 			break
 		}
