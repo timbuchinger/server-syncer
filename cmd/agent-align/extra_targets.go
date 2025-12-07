@@ -7,10 +7,12 @@ import (
 	"os"
 	"path/filepath"
 
+	"gopkg.in/yaml.v3"
+
 	"agent-align/internal/config"
 )
 
-func copyExtraFileTarget(target config.ExtraFileTarget) error {
+func copyExtraFileTarget(target config.ExtraFileTarget, configDir string) error {
 	info, err := os.Stat(target.Source)
 	if err != nil {
 		return fmt.Errorf("failed to inspect %s: %w", target.Source, err)
@@ -19,8 +21,8 @@ func copyExtraFileTarget(target config.ExtraFileTarget) error {
 		return fmt.Errorf("extra file target %s is a directory; use directories instead", target.Source)
 	}
 	for _, dest := range target.Destinations {
-		if err := copyFileContents(target.Source, dest, info.Mode()); err != nil {
-			return fmt.Errorf("failed to copy %s to %s: %w", target.Source, dest, err)
+		if err := copyFileContentsWithSkills(target.Source, dest, info.Mode(), configDir); err != nil {
+			return fmt.Errorf("failed to copy %s to %s: %w", target.Source, dest.Path, err)
 		}
 	}
 	return nil
@@ -83,6 +85,37 @@ func copyDirectory(source, destination string, flatten bool) (int, error) {
 	return copied, nil
 }
 
+func copyFileContentsWithSkills(source string, dest config.ExtraFileCopyRoute, mode os.FileMode, configDir string) error {
+	in, err := os.Open(source)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+
+	if err := os.MkdirAll(filepath.Dir(dest.Path), 0o755); err != nil {
+		return fmt.Errorf("failed to create directory for %s: %w", dest.Path, err)
+	}
+
+	out, err := os.OpenFile(dest.Path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, mode.Perm())
+	if err != nil {
+		return fmt.Errorf("failed to open %s: %w", dest.Path, err)
+	}
+	defer out.Close()
+
+	if _, err := io.Copy(out, in); err != nil {
+		return fmt.Errorf("failed to copy %s to %s: %w", source, dest.Path, err)
+	}
+
+	// If PathToSkills is specified, append skills content
+	if dest.PathToSkills != "" {
+		if err := appendSkillsContent(out, dest.PathToSkills, configDir); err != nil {
+			return fmt.Errorf("failed to append skills content: %w", err)
+		}
+	}
+
+	return nil
+}
+
 func copyFileContents(source, dest string, mode os.FileMode) error {
 	in, err := os.Open(source)
 	if err != nil {
@@ -104,4 +137,133 @@ func copyFileContents(source, dest string, mode os.FileMode) error {
 		return fmt.Errorf("failed to copy %s to %s: %w", source, dest, err)
 	}
 	return nil
+}
+
+// appendSkillsContent reads skills.md from configDir and appends it along with discovered SKILL.md files
+func appendSkillsContent(out *os.File, pathToSkills, configDir string) error {
+	// First, read and append the skills.md template from configDir
+	skillsTemplatePath := filepath.Join(configDir, "skills.md")
+	templateData, err := os.ReadFile(skillsTemplatePath)
+	if err != nil {
+		return fmt.Errorf("failed to read skills template %s: %w", skillsTemplatePath, err)
+	}
+
+	// Write a newline before appending to ensure separation
+	if _, err := out.WriteString("\n"); err != nil {
+		return err
+	}
+
+	if _, err := out.Write(templateData); err != nil {
+		return fmt.Errorf("failed to write skills template: %w", err)
+	}
+
+	// Discover and append SKILL.md files from pathToSkills
+	skills, err := discoverSkills(pathToSkills)
+	if err != nil {
+		return fmt.Errorf("failed to discover skills: %w", err)
+	}
+
+	for _, skill := range skills {
+		skillSection := fmt.Sprintf("\n### **Skill: %s**\n**Description / Use when:**  \n%s\n", skill.Name, skill.Description)
+		if _, err := out.WriteString(skillSection); err != nil {
+			return fmt.Errorf("failed to write skill %s: %w", skill.Name, err)
+		}
+	}
+
+	return nil
+}
+
+// Skill represents a discovered skill with its metadata
+type Skill struct {
+	Name        string
+	Description string
+}
+
+// discoverSkills walks the pathToSkills directory and finds all SKILL.md files
+func discoverSkills(pathToSkills string) ([]Skill, error) {
+	var skills []Skill
+
+	err := filepath.WalkDir(pathToSkills, func(path string, entry fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if entry.IsDir() {
+			return nil
+		}
+		if filepath.Base(path) != "SKILL.md" {
+			return nil
+		}
+
+		skill, err := parseSkillFile(path)
+		if err != nil {
+			// Log but don't fail on individual skill parsing errors
+			fmt.Fprintf(os.Stderr, "Warning: failed to parse skill file %s: %v\n", path, err)
+			return nil
+		}
+		skills = append(skills, skill)
+		return nil
+	})
+
+	return skills, err
+}
+
+// parseSkillFile reads a SKILL.md file and extracts name and description from frontmatter
+func parseSkillFile(path string) (Skill, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return Skill{}, err
+	}
+
+	name, description, err := parseFrontmatter(string(data))
+	if err != nil {
+		return Skill{}, fmt.Errorf("failed to parse frontmatter in %s: %w", path, err)
+	}
+
+	return Skill{
+		Name:        name,
+		Description: description,
+	}, nil
+}
+
+// parseFrontmatter extracts name and description from YAML frontmatter
+func parseFrontmatter(content string) (name, description string, err error) {
+	// Check if content starts with frontmatter delimiter
+	if len(content) < 4 || content[:3] != "---" {
+		return "", "", fmt.Errorf("missing frontmatter delimiter")
+	}
+
+	// Find the closing delimiter
+	endIdx := -1
+	for i := 3; i < len(content)-2; i++ {
+		if content[i] == '\n' && content[i+1:i+4] == "---" {
+			endIdx = i
+			break
+		}
+	}
+
+	if endIdx == -1 {
+		return "", "", fmt.Errorf("missing closing frontmatter delimiter")
+	}
+
+	// Extract frontmatter content (between the delimiters)
+	frontmatter := content[3:endIdx]
+
+	// Parse YAML frontmatter
+	var fm struct {
+		Name        string `yaml:"name"`
+		Description string `yaml:"description"`
+	}
+
+	if err := yaml.Unmarshal([]byte(frontmatter), &fm); err != nil {
+		return "", "", fmt.Errorf("failed to parse YAML frontmatter: %w", err)
+	}
+
+	if fm.Name == "" {
+		return "", "", fmt.Errorf("missing 'name' field in frontmatter")
+	}
+	if fm.Description == "" {
+		return "", "", fmt.Errorf("missing 'description' field in frontmatter")
+	}
+
+	return fm.Name, fm.Description, nil
 }

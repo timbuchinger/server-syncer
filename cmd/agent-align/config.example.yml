@@ -20,8 +20,9 @@ extraTargets:
   files:
     - source: /path/to/AGENTS.md
       destinations:
-        - /path/to/other/AGENTS.md
-        - /path/to/another/AGENTS.md
+        - path: /path/to/other/AGENTS.md
+          pathToSkills: /path/to/skills/
+        - path: /path/to/another/AGENTS.md
   directories:
     - source: /path/to/prompts
       destinations:

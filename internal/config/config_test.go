@@ -87,6 +87,65 @@ func TestLoadRejectsInvalidAdditionalTarget(t *testing.T) {
 	}
 }
 
+func TestLoadExtraFileTargetsBackwardCompatibility(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("HOME", dir)
+
+	// Test that both old string format and new object format work
+	content := `mcpServers:
+  targets:
+    agents:
+      - copilot
+extraTargets:
+  files:
+    - source: ~/source.md
+      destinations:
+        - ~/dest1.md
+        - path: ~/dest2.md
+        - path: ~/dest3.md
+          pathToSkills: ~/skills
+`
+
+	path := writeConfigFile(t, content)
+	got, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+
+	if len(got.ExtraTargets.Files) != 1 {
+		t.Fatalf("expected 1 file target, got %d", len(got.ExtraTargets.Files))
+	}
+
+	fileTarget := got.ExtraTargets.Files[0]
+	if len(fileTarget.Destinations) != 3 {
+		t.Fatalf("expected 3 destinations, got %d", len(fileTarget.Destinations))
+	}
+
+	// Check first destination (string format, no skills)
+	if fileTarget.Destinations[0].Path != filepath.Join(dir, "dest1.md") {
+		t.Errorf("dest1 path not correct: %s", fileTarget.Destinations[0].Path)
+	}
+	if fileTarget.Destinations[0].PathToSkills != "" {
+		t.Errorf("dest1 should not have pathToSkills: %s", fileTarget.Destinations[0].PathToSkills)
+	}
+
+	// Check second destination (object format, no skills)
+	if fileTarget.Destinations[1].Path != filepath.Join(dir, "dest2.md") {
+		t.Errorf("dest2 path not correct: %s", fileTarget.Destinations[1].Path)
+	}
+	if fileTarget.Destinations[1].PathToSkills != "" {
+		t.Errorf("dest2 should not have pathToSkills: %s", fileTarget.Destinations[1].PathToSkills)
+	}
+
+	// Check third destination (object format, with skills)
+	if fileTarget.Destinations[2].Path != filepath.Join(dir, "dest3.md") {
+		t.Errorf("dest3 path not correct: %s", fileTarget.Destinations[2].Path)
+	}
+	if fileTarget.Destinations[2].PathToSkills != filepath.Join(dir, "skills") {
+		t.Errorf("dest3 pathToSkills not correct: %s", fileTarget.Destinations[2].PathToSkills)
+	}
+}
+
 func writeConfigFile(t *testing.T, contents string) string {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "config.yml")

@@ -281,8 +281,9 @@ func main() {
 		}
 	}
 
+	configDir := filepath.Dir(resolvedConfigPath)
 	for _, target := range extraTargets.Files {
-		if err := copyExtraFileTarget(target); err != nil {
+		if err := copyExtraFileTarget(target, configDir); err != nil {
 			msg := fmt.Sprintf("error copying extra file %s: %v", target.Source, err)
 			log.Print(msg)
 			applyErrors = append(applyErrors, msg)

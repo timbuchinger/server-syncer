@@ -48,8 +48,14 @@ type ExtraTargetsConfig struct {
 
 // ExtraFileTarget copies a single source file into multiple destinations.
 type ExtraFileTarget struct {
-	Source       string   `yaml:"source"`
-	Destinations []string `yaml:"destinations"`
+	Source       string                  `yaml:"source"`
+	Destinations []ExtraFileCopyRoute    `yaml:"destinations"`
+}
+
+// ExtraFileCopyRoute describes how a single file destination should be written.
+type ExtraFileCopyRoute struct {
+	Path         string `yaml:"path"`
+	PathToSkills string `yaml:"pathToSkills,omitempty"`
 }
 
 // ExtraDirectoryTarget copies an entire directory, optionally flattening the files.
@@ -68,6 +74,34 @@ type ExtraDirectoryCopyRoute struct {
 type AdditionalJSONTarget struct {
 	FilePath string `yaml:"filePath"`
 	JSONPath string `yaml:"jsonPath"`
+}
+
+// UnmarshalYAML lets file destinations be provided as either strings or mappings.
+func (e *ExtraFileCopyRoute) UnmarshalYAML(node *yaml.Node) error {
+	if node == nil {
+		return nil
+	}
+
+	switch node.Kind {
+	case yaml.ScalarNode:
+		var path string
+		if err := node.Decode(&path); err != nil {
+			return err
+		}
+		e.Path = path
+		return nil
+	case yaml.MappingNode:
+		type raw ExtraFileCopyRoute
+		var r raw
+		if err := node.Decode(&r); err != nil {
+			return err
+		}
+		e.Path = r.Path
+		e.PathToSkills = r.PathToSkills
+		return nil
+	default:
+		return fmt.Errorf("file destination entry must be a string or mapping")
+	}
 }
 
 // UnmarshalYAML lets agent targets be provided as either strings or mappings.
@@ -181,22 +215,33 @@ func Load(path string) (Config, error) {
 			return Config{}, fmt.Errorf("config at %q has an extra file target with invalid source %q: %w", path, source, err)
 		}
 		cfg.ExtraTargets.Files[i].Source = expandedSource
-		var dests []string
+		var routes []ExtraFileCopyRoute
 		for _, dest := range cfg.ExtraTargets.Files[i].Destinations {
-			trimmed := strings.TrimSpace(dest)
-			if trimmed == "" {
+			trimmedPath := strings.TrimSpace(dest.Path)
+			if trimmedPath == "" {
 				continue
 			}
-			expandedDest, err := expandUserPath(trimmed)
+			expandedPath, err := expandUserPath(trimmedPath)
 			if err != nil {
-				return Config{}, fmt.Errorf("config at %q has an extra file target destination %q: %w", path, trimmed, err)
+				return Config{}, fmt.Errorf("config at %q has an extra file target destination %q: %w", path, trimmedPath, err)
 			}
-			dests = append(dests, expandedDest)
+			trimmedSkills := strings.TrimSpace(dest.PathToSkills)
+			var expandedSkills string
+			if trimmedSkills != "" {
+				expandedSkills, err = expandUserPath(trimmedSkills)
+				if err != nil {
+					return Config{}, fmt.Errorf("config at %q has an extra file target pathToSkills %q: %w", path, trimmedSkills, err)
+				}
+			}
+			routes = append(routes, ExtraFileCopyRoute{
+				Path:         expandedPath,
+				PathToSkills: expandedSkills,
+			})
 		}
-		if len(dests) == 0 {
+		if len(routes) == 0 {
 			return Config{}, fmt.Errorf("config at %q has an extra file target for %q without destinations", path, source)
 		}
-		cfg.ExtraTargets.Files[i].Destinations = dests
+		cfg.ExtraTargets.Files[i].Destinations = routes
 	}
 
 	for i := range cfg.ExtraTargets.Directories {
