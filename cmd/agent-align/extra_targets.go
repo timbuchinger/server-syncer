@@ -12,6 +12,8 @@ import (
 	"agent-align/internal/config"
 )
 
+const minFrontmatterLength = 10 // "---\nx\n---" minimum valid frontmatter
+
 func copyExtraFileTarget(target config.ExtraFileTarget, configDir string) error {
 	info, err := os.Stat(target.Source)
 	if err != nil {
@@ -228,15 +230,14 @@ func parseSkillFile(path string) (Skill, error) {
 // parseFrontmatter extracts name and description from YAML frontmatter
 func parseFrontmatter(content string) (name, description string, err error) {
 	// Check if content has minimum required length: "---\n" + content + "\n---"
-	// Minimum valid: "---\nx\n---" = 10 characters
-	if len(content) < 10 || content[:3] != "---" {
+	if len(content) < minFrontmatterLength || content[:3] != "---" {
 		return "", "", fmt.Errorf("missing frontmatter delimiter")
 	}
 
 	// Find the closing delimiter - start after opening "---\n" (position 4)
 	endIdx := -1
 	for i := 4; i < len(content)-3; i++ {
-		if content[i] == '\n' && i+4 <= len(content) && content[i+1:i+4] == "---" {
+		if content[i] == '\n' && i+3 < len(content) && content[i+1:i+4] == "---" {
 			endIdx = i
 			break
 		}
@@ -246,8 +247,8 @@ func parseFrontmatter(content string) (name, description string, err error) {
 		return "", "", fmt.Errorf("missing closing frontmatter delimiter")
 	}
 
-	// Extract frontmatter content (between the delimiters)
-	frontmatter := content[3:endIdx]
+	// Extract frontmatter content (skip opening "---\n", up to closing "\n---")
+	frontmatter := content[4:endIdx]
 
 	// Parse YAML frontmatter
 	var fm struct {
