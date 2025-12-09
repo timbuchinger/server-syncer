@@ -163,6 +163,10 @@ When converting from JSON to YAML:
      commentary, or Markdown fences in your final answer.
    - The root key **must** be `servers:`.
    - Maintain valid YAML indentation using two spaces.
+   - Preserve all indentation, line breaks, and array formatting exactly as
+     required by YAML.
+   - Provide the YAML as plain text suitable for saving directly as a `.yaml`
+     file or as a downloadable `.yaml` file.
 
 ## Step-by-step behavior
 
