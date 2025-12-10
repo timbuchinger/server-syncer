@@ -88,6 +88,16 @@ extraTargets:
   MCP sync.
   - `files` (sequence) – mirror a single source file to multiple destinations.
     Each entry must specify `source` and at least one `destinations` value.
+    Each destination may be provided as a plain string (the destination path)
+    or as a mapping. Destinations support an optional `pathToSkills`
+    (string). When set, `agent-align` will append the `skills.md` template
+    from the config directory and any discovered `SKILL.md` files found under
+    the provided path to the copied destination file.
+    Destinations also accept an optional `frontmatterTemplate` (string).
+    When provided, the referenced file's contents will be written (as a
+    frontmatter/template block) to the destination before any `skills.md`
+    content is appended. This is useful when copying prompt files that need
+    YAML frontmatter or a fixed header.
   - `directories` (sequence) – copy every file within `source` to each entry in
     `destinations`. Every destination entry must specify a `path` and may set
     `flatten: true` to drop the source directory structure while copying.
