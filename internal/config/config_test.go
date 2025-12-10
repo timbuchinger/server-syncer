@@ -144,6 +144,81 @@ extraTargets:
 	if fileTarget.Destinations[2].PathToSkills != filepath.Join(dir, "skills") {
 		t.Errorf("dest3 pathToSkills not correct: %s", fileTarget.Destinations[2].PathToSkills)
 	}
+	
+	// Verify that pathToSkills was converted to appendSkills for backward compatibility
+	if len(fileTarget.Destinations[2].AppendSkills) != 1 {
+		t.Errorf("dest3 should have 1 appendSkills entry from pathToSkills conversion, got %d", len(fileTarget.Destinations[2].AppendSkills))
+	}
+	if len(fileTarget.Destinations[2].AppendSkills) > 0 && fileTarget.Destinations[2].AppendSkills[0].Path != filepath.Join(dir, "skills") {
+		t.Errorf("dest3 appendSkills[0].Path not correct: %s", fileTarget.Destinations[2].AppendSkills[0].Path)
+	}
+}
+
+func TestLoadExtraFileTargetsWithAppendSkills(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("HOME", dir)
+
+	// Test new appendSkills format
+	content := `mcpServers:
+  targets:
+    agents:
+      - copilot
+extraTargets:
+  files:
+    - source: ~/source.md
+      destinations:
+        - path: ~/dest1.md
+          appendSkills:
+            - path: ~/skills1
+            - path: ~/skills2
+              ignoredSkills:
+                - test1
+                - test2
+`
+
+	path := writeConfigFile(t, content)
+	got, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+
+	if len(got.ExtraTargets.Files) != 1 {
+		t.Fatalf("expected 1 file target, got %d", len(got.ExtraTargets.Files))
+	}
+
+	fileTarget := got.ExtraTargets.Files[0]
+	if len(fileTarget.Destinations) != 1 {
+		t.Fatalf("expected 1 destination, got %d", len(fileTarget.Destinations))
+	}
+
+	dest := fileTarget.Destinations[0]
+	if len(dest.AppendSkills) != 2 {
+		t.Fatalf("expected 2 appendSkills entries, got %d", len(dest.AppendSkills))
+	}
+
+	// Check first appendSkills entry
+	if dest.AppendSkills[0].Path != filepath.Join(dir, "skills1") {
+		t.Errorf("appendSkills[0].Path not correct: %s", dest.AppendSkills[0].Path)
+	}
+	if len(dest.AppendSkills[0].IgnoredSkills) != 0 {
+		t.Errorf("appendSkills[0] should not have ignoredSkills, got %d", len(dest.AppendSkills[0].IgnoredSkills))
+	}
+
+	// Check second appendSkills entry
+	if dest.AppendSkills[1].Path != filepath.Join(dir, "skills2") {
+		t.Errorf("appendSkills[1].Path not correct: %s", dest.AppendSkills[1].Path)
+	}
+	if len(dest.AppendSkills[1].IgnoredSkills) != 2 {
+		t.Errorf("appendSkills[1] should have 2 ignoredSkills, got %d", len(dest.AppendSkills[1].IgnoredSkills))
+	}
+	if len(dest.AppendSkills[1].IgnoredSkills) == 2 {
+		if dest.AppendSkills[1].IgnoredSkills[0] != "test1" {
+			t.Errorf("appendSkills[1].IgnoredSkills[0] should be 'test1', got '%s'", dest.AppendSkills[1].IgnoredSkills[0])
+		}
+		if dest.AppendSkills[1].IgnoredSkills[1] != "test2" {
+			t.Errorf("appendSkills[1].IgnoredSkills[1] should be 'test2', got '%s'", dest.AppendSkills[1].IgnoredSkills[1])
+		}
+	}
 }
 
 func writeConfigFile(t *testing.T, contents string) string {

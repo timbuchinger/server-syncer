@@ -24,7 +24,11 @@ extraTargets:
     - source: /path/to/AGENTS.md
       destinations:
         - path: /path/to/other/AGENTS.md
-          pathToSkills: /path/to/skills/
+          appendSkills:
+            - path: /path/to/skills/
+              ignoredSkills:
+                - test1
+                - test2
         - path: /path/to/another/AGENTS.md
   directories:
     - source: /path/to/prompts

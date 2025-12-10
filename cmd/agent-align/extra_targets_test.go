@@ -387,7 +387,7 @@ description: Second skill
 		t.Fatalf("failed to write README: %v", err)
 	}
 
-	skills, err := discoverSkills(dir)
+	skills, err := discoverSkills(dir, nil)
 	if err != nil {
 		t.Fatalf("discoverSkills returned error: %v", err)
 	}
@@ -407,5 +407,71 @@ description: Second skill
 	}
 	if desc, ok := foundSkills["skill-two"]; !ok || desc != "Second skill" {
 		t.Errorf("skill-two not found or has wrong description")
+	}
+}
+
+func TestDiscoverSkillsWithIgnoreList(t *testing.T) {
+	dir := t.TempDir()
+	
+	// Create nested directory structure with SKILL.md files
+	if err := os.MkdirAll(filepath.Join(dir, "skill1"), 0o755); err != nil {
+		t.Fatalf("failed to create skill1 dir: %v", err)
+	}
+	if err := os.MkdirAll(filepath.Join(dir, "skill2"), 0o755); err != nil {
+		t.Fatalf("failed to create skill2 dir: %v", err)
+	}
+	if err := os.MkdirAll(filepath.Join(dir, "skill3"), 0o755); err != nil {
+		t.Fatalf("failed to create skill3 dir: %v", err)
+	}
+
+	skill1Content := `---
+name: skill-one
+description: First skill
+---`
+	if err := os.WriteFile(filepath.Join(dir, "skill1", "SKILL.md"), []byte(skill1Content), 0o644); err != nil {
+		t.Fatalf("failed to write skill1: %v", err)
+	}
+
+	skill2Content := `---
+name: skill-two
+description: Second skill
+---`
+	if err := os.WriteFile(filepath.Join(dir, "skill2", "SKILL.md"), []byte(skill2Content), 0o644); err != nil {
+		t.Fatalf("failed to write skill2: %v", err)
+	}
+
+	skill3Content := `---
+name: skill-three
+description: Third skill
+---`
+	if err := os.WriteFile(filepath.Join(dir, "skill3", "SKILL.md"), []byte(skill3Content), 0o644); err != nil {
+		t.Fatalf("failed to write skill3: %v", err)
+	}
+
+	// Test with ignore list
+	ignoredSkills := []string{"skill-two"}
+	skills, err := discoverSkills(dir, ignoredSkills)
+	if err != nil {
+		t.Fatalf("discoverSkills returned error: %v", err)
+	}
+
+	if len(skills) != 2 {
+		t.Fatalf("expected 2 skills (skill-two should be ignored), got %d", len(skills))
+	}
+
+	// Verify skills are discovered (order may vary)
+	foundSkills := make(map[string]string)
+	for _, skill := range skills {
+		foundSkills[skill.Name] = skill.Description
+	}
+
+	if desc, ok := foundSkills["skill-one"]; !ok || desc != "First skill" {
+		t.Errorf("skill-one not found or has wrong description")
+	}
+	if desc, ok := foundSkills["skill-three"]; !ok || desc != "Third skill" {
+		t.Errorf("skill-three not found or has wrong description")
+	}
+	if _, ok := foundSkills["skill-two"]; ok {
+		t.Errorf("skill-two should have been ignored but was found")
 	}
 }

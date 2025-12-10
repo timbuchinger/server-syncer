@@ -108,10 +108,17 @@ func copyFileContentsWithSkills(source string, dest config.ExtraFileCopyRoute, m
 		return fmt.Errorf("failed to copy %s to %s: %w", source, dest.Path, err)
 	}
 
-	// If PathToSkills is specified, append skills content
+	// If PathToSkills is specified (deprecated), append skills content
 	if dest.PathToSkills != "" {
-		if err := appendSkillsContent(out, dest.PathToSkills, configDir); err != nil {
+		if err := appendSkillsContent(out, dest.PathToSkills, configDir, nil); err != nil {
 			return fmt.Errorf("failed to append skills content: %w", err)
+		}
+	}
+	
+	// If AppendSkills is specified (new format), append skills content with filtering
+	for _, appendSkill := range dest.AppendSkills {
+		if err := appendSkillsContent(out, appendSkill.Path, configDir, appendSkill.IgnoredSkills); err != nil {
+			return fmt.Errorf("failed to append skills content from %s: %w", appendSkill.Path, err)
 		}
 	}
 
@@ -142,7 +149,7 @@ func copyFileContents(source, dest string, mode os.FileMode) error {
 }
 
 // appendSkillsContent reads skills.md from configDir and appends it along with discovered SKILL.md files
-func appendSkillsContent(out *os.File, pathToSkills, configDir string) error {
+func appendSkillsContent(out *os.File, pathToSkills, configDir string, ignoredSkills []string) error {
 	// First, read and append the skills.md template from configDir
 	skillsTemplatePath := filepath.Join(configDir, "skills.md")
 	templateData, err := os.ReadFile(skillsTemplatePath)
@@ -160,7 +167,7 @@ func appendSkillsContent(out *os.File, pathToSkills, configDir string) error {
 	}
 
 	// Discover and append SKILL.md files from pathToSkills
-	skills, err := discoverSkills(pathToSkills)
+	skills, err := discoverSkills(pathToSkills, ignoredSkills)
 	if err != nil {
 		return fmt.Errorf("failed to discover skills: %w", err)
 	}
@@ -182,8 +189,14 @@ type Skill struct {
 }
 
 // discoverSkills walks the pathToSkills directory and finds all SKILL.md files
-func discoverSkills(pathToSkills string) ([]Skill, error) {
+func discoverSkills(pathToSkills string, ignoredSkills []string) ([]Skill, error) {
 	var skills []Skill
+	
+	// Create a map for faster lookup of ignored skills
+	ignoredMap := make(map[string]bool)
+	for _, ignored := range ignoredSkills {
+		ignoredMap[ignored] = true
+	}
 
 	err := filepath.WalkDir(pathToSkills, func(path string, entry fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
@@ -202,6 +215,12 @@ func discoverSkills(pathToSkills string) ([]Skill, error) {
 			fmt.Fprintf(os.Stderr, "Warning: failed to parse skill file %s: %v\n", path, err)
 			return nil
 		}
+		
+		// Skip if skill is in the ignored list
+		if ignoredMap[skill.Name] {
+			return nil
+		}
+		
 		skills = append(skills, skill)
 		return nil
 	})
