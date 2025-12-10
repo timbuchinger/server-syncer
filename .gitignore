@@ -2,7 +2,6 @@ node_modules/
 npm-debug.log
 .DS_Store
 coverage.out
-agent-align
 *.exe
 config.yml
 agent-align-mcp.yml

@@ -31,7 +31,7 @@ var (
 	collectConfig = promptForConfig
 )
 
-//go:embed config.example.yml
+//go:embed config.embedded.yml
 var exampleConfig string
 
 func main() {

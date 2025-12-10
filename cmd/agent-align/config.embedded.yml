@@ -1,0 +1,43 @@
+# Embedded CLI example config (keep in sync with /config.example.yml)
+mcpServers:
+  configPath: config-mcp.example.yml
+  targets:
+    agents:
+      - name: copilot
+      - name: vscode
+        disabledMcpServers:
+          - gdrive
+          - box
+      - name: codex
+        path: /custom/.codex/config.toml
+      - name: claudecode
+      - name: gemini
+      - name: gemini
+        path: ~/.qwen/settings.json # qwen uses the same format as gemini, so re-use that target here
+      - name: kilocode
+    additionalTargets:
+      json:
+        - filePath: /path/to/additional_targets.json
+          jsonPath: .mcpServers
+extraTargets:
+  files:
+    - source: /path/to/AGENTS.md
+      destinations:
+        - path: /path/to/other/AGENTS.md
+          appendSkills:
+            - path: /path/to/skills/
+              ignoredSkills:
+                - test1
+                - test2
+        - path: /path/to/another/AGENTS.md
+          pathToSkills: /path/to/skills/
+        - path: /path/to/yet/another/AGENTS.md
+          frontmatterTemplate: /path/to/frontmatter-template.md
+  directories:
+    - source: /path/to/prompts
+      destinations:
+        - path: /path/to/other/prompts
+          excludeGlobs:
+            - 'troubleshoot/**'
+          flatten: true
+        - path: /path/to/another/prompts
