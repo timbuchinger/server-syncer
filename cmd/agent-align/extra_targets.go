@@ -6,6 +6,8 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 
@@ -14,7 +16,7 @@ import (
 
 const minFrontmatterLength = 10 // "---\nx\n---" minimum valid frontmatter
 
-func copyExtraFileTarget(target config.ExtraFileTarget, configDir string) error {
+func copyExtraFileTarget(target config.ExtraFileTarget, configDir string, mcpServers map[string]interface{}) error {
 	info, err := os.Stat(target.Source)
 	if err != nil {
 		return fmt.Errorf("failed to inspect %s: %w", target.Source, err)
@@ -23,7 +25,7 @@ func copyExtraFileTarget(target config.ExtraFileTarget, configDir string) error 
 		return fmt.Errorf("extra file target %s is a directory; use directories instead", target.Source)
 	}
 	for _, dest := range target.Destinations {
-		if err := copyFileContentsWithSkills(target.Source, dest, info.Mode(), configDir); err != nil {
+		if err := copyFileContentsWithSkillsAndFrontmatter(target.Source, dest, info.Mode(), configDir, mcpServers); err != nil {
 			return fmt.Errorf("failed to copy %s to %s: %w", target.Source, dest.Path, err)
 		}
 	}
@@ -87,12 +89,12 @@ func copyDirectory(source, destination string, flatten bool) (int, error) {
 	return copied, nil
 }
 
-func copyFileContentsWithSkills(source string, dest config.ExtraFileCopyRoute, mode os.FileMode, configDir string) error {
-	in, err := os.Open(source)
+func copyFileContentsWithSkillsAndFrontmatter(source string, dest config.ExtraFileCopyRoute, mode os.FileMode, configDir string, mcpServers map[string]interface{}) error {
+	// Read source file content
+	sourceData, err := os.ReadFile(source)
 	if err != nil {
 		return err
 	}
-	defer in.Close()
 
 	if err := os.MkdirAll(filepath.Dir(dest.Path), 0o755); err != nil {
 		return fmt.Errorf("failed to create directory for %s: %w", dest.Path, err)
@@ -104,14 +106,22 @@ func copyFileContentsWithSkills(source string, dest config.ExtraFileCopyRoute, m
 	}
 	defer out.Close()
 
-	if _, err := io.Copy(out, in); err != nil {
-		return fmt.Errorf("failed to copy %s to %s: %w", source, dest.Path, err)
-	}
+	// If FrontmatterPath is specified, use frontmatter template processing
+	if dest.FrontmatterPath != "" {
+		if err := processFrontmatterTemplate(out, dest.FrontmatterPath, string(sourceData), mcpServers); err != nil {
+			return fmt.Errorf("failed to process frontmatter template: %w", err)
+		}
+	} else {
+		// Otherwise, copy source content directly
+		if _, err := out.Write(sourceData); err != nil {
+			return fmt.Errorf("failed to copy %s to %s: %w", source, dest.Path, err)
+		}
 
-	// If PathToSkills is specified, append skills content
-	if dest.PathToSkills != "" {
-		if err := appendSkillsContent(out, dest.PathToSkills, configDir); err != nil {
-			return fmt.Errorf("failed to append skills content: %w", err)
+		// If PathToSkills is specified, append skills content
+		if dest.PathToSkills != "" {
+			if err := appendSkillsContent(out, dest.PathToSkills, configDir); err != nil {
+				return fmt.Errorf("failed to append skills content: %w", err)
+			}
 		}
 	}
 
@@ -138,6 +148,40 @@ func copyFileContents(source, dest string, mode os.FileMode) error {
 	if _, err := io.Copy(out, in); err != nil {
 		return fmt.Errorf("failed to copy %s to %s: %w", source, dest, err)
 	}
+	return nil
+}
+
+// processFrontmatterTemplate processes a frontmatter template file, replacing [CONTENT] and [MCP] placeholders
+func processFrontmatterTemplate(out *os.File, frontmatterPath, sourceContent string, mcpServers map[string]interface{}) error {
+	// Read the frontmatter template
+	templateData, err := os.ReadFile(frontmatterPath)
+	if err != nil {
+		return fmt.Errorf("failed to read frontmatter template %s: %w", frontmatterPath, err)
+	}
+
+	template := string(templateData)
+
+	// Replace [CONTENT] with the source content
+	template = strings.ReplaceAll(template, "[CONTENT]", sourceContent)
+
+	// Build MCP server list in the format 'server_name/*'
+	var mcpList []string
+	for serverName := range mcpServers {
+		mcpList = append(mcpList, fmt.Sprintf("'%s/*'", serverName))
+	}
+
+	// Sort for consistent output
+	sort.Strings(mcpList)
+
+	// Replace [MCP] with the comma-separated list of MCP servers
+	mcpReplacement := strings.Join(mcpList, ", ")
+	template = strings.ReplaceAll(template, "[MCP]", mcpReplacement)
+
+	// Write the processed template to the output file
+	if _, err := out.WriteString(template); err != nil {
+		return fmt.Errorf("failed to write processed template: %w", err)
+	}
+
 	return nil
 }
 

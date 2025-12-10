@@ -25,7 +25,8 @@ func TestCopyExtraFileTarget(t *testing.T) {
 			{Path: dest2},
 		},
 	}
-	if err := copyExtraFileTarget(target, dir); err != nil {
+	mcpServers := map[string]interface{}{}
+	if err := copyExtraFileTarget(target, dir, mcpServers); err != nil {
 		t.Fatalf("copyExtraFileTarget returned error: %v", err)
 	}
 
@@ -204,7 +205,8 @@ description: Use when reviewing code for best practices and common issues
 		},
 	}
 
-	if err := copyExtraFileTarget(target, dir); err != nil {
+	mcpServers := map[string]interface{}{}
+	if err := copyExtraFileTarget(target, dir, mcpServers); err != nil {
 		t.Fatalf("copyExtraFileTarget returned error: %v", err)
 	}
 
@@ -263,7 +265,8 @@ func TestCopyExtraFileTargetMixedDestinations(t *testing.T) {
 		},
 	}
 
-	if err := copyExtraFileTarget(target, dir); err != nil {
+	mcpServers := map[string]interface{}{}
+	if err := copyExtraFileTarget(target, dir, mcpServers); err != nil {
 		t.Fatalf("copyExtraFileTarget returned error: %v", err)
 	}
 
@@ -352,6 +355,90 @@ name: test-skill
 				}
 			}
 		})
+	}
+}
+
+func TestCopyExtraFileTargetWithFrontmatter(t *testing.T) {
+	dir := t.TempDir()
+	
+	// Create source file
+	source := filepath.Join(dir, "AGENTS.md")
+	sourceContent := "# My Agent Instructions\n\nFollow these rules."
+	if err := os.WriteFile(source, []byte(sourceContent), 0o644); err != nil {
+		t.Fatalf("failed to write source file: %v", err)
+	}
+
+	// Create frontmatter template
+	frontmatterPath := filepath.Join(dir, "frontmatter.md")
+	frontmatterContent := `---
+description: 'Agent instructions'
+tools: ['edit', 'view', [MCP]]
+---
+
+[CONTENT]`
+	if err := os.WriteFile(frontmatterPath, []byte(frontmatterContent), 0o644); err != nil {
+		t.Fatalf("failed to write frontmatter template: %v", err)
+	}
+
+	// Create destination
+	dest := filepath.Join(dir, "output.md")
+	target := config.ExtraFileTarget{
+		Source: source,
+		Destinations: []config.ExtraFileCopyRoute{
+			{
+				Path:            dest,
+				FrontmatterPath: frontmatterPath,
+			},
+		},
+	}
+
+	// Create MCP servers
+	mcpServers := map[string]interface{}{
+		"github":  map[string]interface{}{"command": "npx"},
+		"azure":   map[string]interface{}{"command": "docker"},
+		"qdrant":  map[string]interface{}{"command": "uvx"},
+	}
+
+	if err := copyExtraFileTarget(target, dir, mcpServers); err != nil {
+		t.Fatalf("copyExtraFileTarget returned error: %v", err)
+	}
+
+	// Verify the output
+	data, err := os.ReadFile(dest)
+	if err != nil {
+		t.Fatalf("failed to read destination: %v", err)
+	}
+
+	content := string(data)
+	
+	// Check that [CONTENT] was replaced
+	if !strings.Contains(content, "# My Agent Instructions") {
+		t.Errorf("destination missing source content")
+	}
+	if strings.Contains(content, "[CONTENT]") {
+		t.Errorf("destination still contains [CONTENT] placeholder")
+	}
+
+	// Check that [MCP] was replaced with MCP server list
+	if strings.Contains(content, "[MCP]") {
+		t.Errorf("destination still contains [MCP] placeholder")
+	}
+	if !strings.Contains(content, "'azure/*'") {
+		t.Errorf("destination missing azure MCP server")
+	}
+	if !strings.Contains(content, "'github/*'") {
+		t.Errorf("destination missing github MCP server")
+	}
+	if !strings.Contains(content, "'qdrant/*'") {
+		t.Errorf("destination missing qdrant MCP server")
+	}
+
+	// Check that frontmatter structure is preserved
+	if !strings.Contains(content, "description: 'Agent instructions'") {
+		t.Errorf("destination missing frontmatter description")
+	}
+	if !strings.Contains(content, "tools:") {
+		t.Errorf("destination missing tools array")
 	}
 }
 

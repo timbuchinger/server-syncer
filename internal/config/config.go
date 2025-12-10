@@ -54,8 +54,9 @@ type ExtraFileTarget struct {
 
 // ExtraFileCopyRoute describes how a single file destination should be written.
 type ExtraFileCopyRoute struct {
-	Path         string `yaml:"path"`
-	PathToSkills string `yaml:"pathToSkills,omitempty"`
+	Path            string `yaml:"path"`
+	PathToSkills    string `yaml:"pathToSkills,omitempty"`
+	FrontmatterPath string `yaml:"frontmatterPath,omitempty"`
 }
 
 // ExtraDirectoryTarget copies an entire directory, optionally flattening the files.
@@ -98,6 +99,7 @@ func (e *ExtraFileCopyRoute) UnmarshalYAML(node *yaml.Node) error {
 		}
 		e.Path = r.Path
 		e.PathToSkills = r.PathToSkills
+		e.FrontmatterPath = r.FrontmatterPath
 		return nil
 	default:
 		return fmt.Errorf("file destination entry must be a string or mapping")
@@ -233,9 +235,18 @@ func Load(path string) (Config, error) {
 					return Config{}, fmt.Errorf("config at %q has an extra file target pathToSkills %q: %w", path, trimmedSkills, err)
 				}
 			}
+			trimmedFrontmatter := strings.TrimSpace(dest.FrontmatterPath)
+			var expandedFrontmatter string
+			if trimmedFrontmatter != "" {
+				expandedFrontmatter, err = expandUserPath(trimmedFrontmatter)
+				if err != nil {
+					return Config{}, fmt.Errorf("config at %q has an extra file target frontmatterPath %q: %w", path, trimmedFrontmatter, err)
+				}
+			}
 			routes = append(routes, ExtraFileCopyRoute{
-				Path:         expandedPath,
-				PathToSkills: expandedSkills,
+				Path:            expandedPath,
+				PathToSkills:    expandedSkills,
+				FrontmatterPath: expandedFrontmatter,
 			})
 		}
 		if len(routes) == 0 {
