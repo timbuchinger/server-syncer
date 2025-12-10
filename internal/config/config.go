@@ -60,9 +60,10 @@ type AppendSkill struct {
 
 // ExtraFileCopyRoute describes how a single file destination should be written.
 type ExtraFileCopyRoute struct {
-	Path         string        `yaml:"path"`
-	PathToSkills string        `yaml:"pathToSkills,omitempty"` // Deprecated: use AppendSkills
-	AppendSkills []AppendSkill `yaml:"appendSkills,omitempty"`
+	Path            string        `yaml:"path"`
+	PathToSkills    string        `yaml:"pathToSkills,omitempty"` // Deprecated: use AppendSkills
+	AppendSkills    []AppendSkill `yaml:"appendSkills,omitempty"`
+	FrontmatterPath string        `yaml:"frontmatterPath,omitempty"`
 }
 
 // ExtraDirectoryTarget copies an entire directory, optionally flattening the files.
@@ -106,6 +107,7 @@ func (e *ExtraFileCopyRoute) UnmarshalYAML(node *yaml.Node) error {
 		e.Path = r.Path
 		e.PathToSkills = r.PathToSkills
 		e.AppendSkills = r.AppendSkills
+		e.FrontmatterPath = r.FrontmatterPath
 		
 		// Backward compatibility: convert pathToSkills to appendSkills
 		if e.PathToSkills != "" && len(e.AppendSkills) == 0 {
@@ -276,10 +278,21 @@ func Load(path string) (Config, error) {
 				})
 			}
 			
+			// Handle FrontmatterPath
+			trimmedFrontmatter := strings.TrimSpace(dest.FrontmatterPath)
+			var expandedFrontmatter string
+			if trimmedFrontmatter != "" {
+				expandedFrontmatter, err = expandUserPath(trimmedFrontmatter)
+				if err != nil {
+					return Config{}, fmt.Errorf("config at %q has an extra file target frontmatterPath %q: %w", path, trimmedFrontmatter, err)
+				}
+			}
+			
 			routes = append(routes, ExtraFileCopyRoute{
-				Path:         expandedPath,
-				PathToSkills: expandedSkills,
-				AppendSkills: expandedAppendSkills,
+				Path:            expandedPath,
+				PathToSkills:    expandedSkills,
+				AppendSkills:    expandedAppendSkills,
+				FrontmatterPath: expandedFrontmatter,
 			})
 		}
 		if len(routes) == 0 {

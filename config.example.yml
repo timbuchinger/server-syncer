@@ -31,7 +31,7 @@ extraTargets:
                 - test2
         - path: /path/to/another/AGENTS.md
           pathToSkills: /path/to/skills/
-        - path: /path/to/another/AGENTS.md
+        - path: /path/to/yet/another/AGENTS.md
           frontmatterTemplate: /path/to/frontmatter-template.md
   directories:
     - source: /path/to/prompts
