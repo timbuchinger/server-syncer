@@ -123,7 +123,7 @@ func copyFileContentsWithSkillsAndFrontmatter(source string, dest config.ExtraFi
 				return fmt.Errorf("failed to append skills content: %w", err)
 			}
 		}
-		
+
 		// If AppendSkills is specified (new format), append skills content with filtering
 		for _, appendSkill := range dest.AppendSkills {
 			if err := appendSkillsContent(out, appendSkill.Path, configDir, appendSkill.IgnoredSkills); err != nil {
@@ -241,7 +241,7 @@ type Skill struct {
 // discoverSkills walks the pathToSkills directory and finds all SKILL.md files
 func discoverSkills(pathToSkills string, ignoredSkills []string) ([]Skill, error) {
 	var skills []Skill
-	
+
 	// Create a map for faster lookup of ignored skills
 	ignoredMap := make(map[string]bool)
 	for _, ignored := range ignoredSkills {
@@ -265,12 +265,12 @@ func discoverSkills(pathToSkills string, ignoredSkills []string) ([]Skill, error
 			fmt.Fprintf(os.Stderr, "Warning: failed to parse skill file %s: %v\n", path, err)
 			return nil
 		}
-		
+
 		// Skip if skill is in the ignored list
 		if ignoredMap[skill.Name] {
 			return nil
 		}
-		
+
 		skills = append(skills, skill)
 		return nil
 	})
