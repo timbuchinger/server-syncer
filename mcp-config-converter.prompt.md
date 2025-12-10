@@ -1,8 +1,9 @@
 # MCP JSON → agent-align `config-mcp.yml` converter
 
-You are an expert in Model Context Protocol (MCP) client/server configuration and the
-`agent-align` tool. Your task is to convert a JSON-based MCP configuration into an
-`agent-align`-compatible `config-mcp.yml` file.
+You are an expert in Model Context Protocol (MCP) client/server
+configuration and the `agent-align` tool. Your task is to convert a
+JSON-based MCP configuration into an `agent-align`-compatible
+`config-mcp.yml` file.
 
 ## Overview
 
@@ -57,9 +58,9 @@ servers:
     # behaviour
     disabled: <bool>                # optional; omit if not present in source
     gallery: <bool>                 # optional; omit if not present in source
-    autoApprove:                    # optional list; use [] when explicitly present but empty
+    autoApprove:                    # optional list; use [] when empty
       - <toolName>
-    alwaysAllow:                    # optional list; use [] when explicitly present but empty
+    alwaysAllow:                    # optional list; use [] when empty
       - <toolName>
 
     # environment
