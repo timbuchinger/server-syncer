@@ -360,7 +360,7 @@ name: test-skill
 
 func TestCopyExtraFileTargetWithFrontmatter(t *testing.T) {
 	dir := t.TempDir()
-	
+
 	// Create source file
 	source := filepath.Join(dir, "AGENTS.md")
 	sourceContent := "# My Agent Instructions\n\nFollow these rules."
@@ -410,7 +410,7 @@ tools: ['edit', 'view', [MCP]]
 	}
 
 	content := string(data)
-	
+
 	// Check that [CONTENT] was replaced
 	if !strings.Contains(content, "# My Agent Instructions") {
 		t.Errorf("destination missing source content")
