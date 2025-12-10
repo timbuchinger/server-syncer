@@ -78,10 +78,11 @@ func expandEnv(s string) string {
 		// Support ${VAR:-default} syntax
 		if strings.Contains(key, ":-") {
 			parts := strings.SplitN(key, ":-", 2)
-			if val := os.Getenv(parts[0]); val != "" {
-				return val
+			val := os.Getenv(parts[0])
+			if val == "" {
+				return parts[1]
 			}
-			return parts[1]
+			return val
 		}
 		return os.Getenv(key)
 	})

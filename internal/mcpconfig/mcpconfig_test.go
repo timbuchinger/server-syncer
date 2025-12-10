@@ -43,8 +43,8 @@ func TestLoadMissingServers(t *testing.T) {
 func TestLoadWithEnvVarExpansion(t *testing.T) {
 	// Set test environment variables
 	os.Setenv("TEST_API_KEY", "secret-key-123")
-	os.Setenv("TEST_URL", "https://api.example.com")
 	defer os.Unsetenv("TEST_API_KEY")
+	os.Setenv("TEST_URL", "https://api.example.com")
 	defer os.Unsetenv("TEST_URL")
 
 	path := filepath.Join(t.TempDir(), "mcp.yml")
@@ -124,9 +124,45 @@ func TestLoadWithEnvVarDefault(t *testing.T) {
 	}
 }
 
+func TestLoadWithEmptyEnvVarUsesDefault(t *testing.T) {
+	// Set the variable to empty string
+	defer os.Unsetenv("TEST_EMPTY_VAR")
+	os.Setenv("TEST_EMPTY_VAR", "")
+
+	path := filepath.Join(t.TempDir(), "mcp.yml")
+	content := `servers:
+  test:
+    command: npx
+    env:
+      DEFAULT_VAR: ${TEST_EMPTY_VAR:-default-value}
+`
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatalf("failed to write file: %v", err)
+	}
+
+	got, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load returned error: %v", err)
+	}
+
+	server, ok := got["test"].(map[string]interface{})
+	if !ok {
+		t.Fatal("expected test server to be a map")
+	}
+
+	env, ok := server["env"].(map[string]interface{})
+	if !ok {
+		t.Fatal("expected env to be a map")
+	}
+
+	if env["DEFAULT_VAR"] != "default-value" {
+		t.Errorf("expected DEFAULT_VAR to use default value for empty string, got %v", env["DEFAULT_VAR"])
+	}
+}
+
 func TestLoadWithEnvVarInNestedStructures(t *testing.T) {
-	os.Setenv("TEST_TOKEN", "bearer-token-xyz")
 	defer os.Unsetenv("TEST_TOKEN")
+	os.Setenv("TEST_TOKEN", "bearer-token-xyz")
 
 	path := filepath.Join(t.TempDir(), "mcp.yml")
 	content := `servers:
@@ -162,8 +198,8 @@ func TestLoadWithEnvVarInNestedStructures(t *testing.T) {
 }
 
 func TestLoadWithEnvVarInArrays(t *testing.T) {
-	os.Setenv("TEST_ARG", "custom-arg")
 	defer os.Unsetenv("TEST_ARG")
+	os.Setenv("TEST_ARG", "custom-arg")
 
 	path := filepath.Join(t.TempDir(), "mcp.yml")
 	content := `servers:
