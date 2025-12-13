@@ -20,10 +20,30 @@ on GitHub Pages at <https://timbuchinger.github.io/agent-align/>.
 
 ## Getting started
 
+### Installation
+
+You can install agent-align using one of the following methods:
+
+**Homebrew (macOS and Linux):**
+
+```bash
+brew install timbuchinger/agent-align/agent-align
+```
+
+**Manual download:**
+
 1. Download the latest binary from the
-   [releases page](https://github.com/timbuchinger/agent-align/releases/latest)
-   (or run `go build ./cmd/agent-align`).
-2. Create an MCP definitions file to act as the source of truth; for example,
+   [releases page](https://github.com/timbuchinger/agent-align/releases/latest).
+
+**Build from source:**
+
+```bash
+go build ./cmd/agent-align
+```
+
+### Configuration
+
+1. Create an MCP definitions file to act as the source of truth; for example,
    save this to `agent-align-mcp.yml` next to the binary:
 
    ```yaml
@@ -41,7 +61,7 @@ on GitHub Pages at <https://timbuchinger.github.io/agent-align/>.
    syntax. See `config-mcp.example.yml` for a more complete template with
    command-based servers and environment variables.
 
-3. Create a target config; for example, save this to `agent-align.yml`:
+2. Create a target config; for example, save this to `agent-align.yml`:
 
    ```yaml
    mcpServers:
@@ -58,7 +78,7 @@ on GitHub Pages at <https://timbuchinger.github.io/agent-align/>.
    You can also run `agent-align init -config /path/to/agent-align.yml` to walk
    through the same settings interactively.
 
-4. Run the app with your config files:
+3. Run the app with your config files:
 
    ```bash
    ./agent-align -config agent-align.yml -mcp-config agent-align-mcp.yml
