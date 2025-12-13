@@ -162,9 +162,20 @@ jobs:
           
           # Clone the homebrew tap repository
           TEMP_DIR=$(mktemp -d)
-          git clone "https://${HOMEBREW_TAP_TOKEN}@github.com/${HOMEBREW_TAP_REPO}.git" "$TEMP_DIR"
+          
+          # Configure git credentials to avoid token exposure in URLs
+          git config --global credential.helper store
+          echo "https://github-actions:${HOMEBREW_TAP_TOKEN}@github.com" > ~/.git-credentials
+          
+          git clone "https://github.com/${HOMEBREW_TAP_REPO}.git" "$TEMP_DIR"
+          
+          # Detect the default branch
+          cd "$TEMP_DIR"
+          DEFAULT_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD | sed 's@^refs/remotes/origin/@@')
+          cd -
           
           # Copy the updated formula
+          mkdir -p "$TEMP_DIR/Formula"
           cp Formula/agent-align.rb "$TEMP_DIR/Formula/agent-align.rb"
           
           # Commit and push
@@ -174,7 +185,10 @@ jobs:
             echo "No changes to Homebrew formula"
           else
             git commit -m "chore: update agent-align to version ${VERSION}"
-            git push origin main || git push origin master
+            git push origin "$DEFAULT_BRANCH"
           fi
           
+          # Clean up credentials
+          rm -f ~/.git-credentials
+          git config --global --unset credential.helper
           rm -rf "$TEMP_DIR"

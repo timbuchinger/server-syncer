@@ -18,11 +18,21 @@ VERSION=${VERSION#v}
 
 echo "Updating Homebrew formula for version $VERSION"
 
+# Detect SHA256 command (macOS uses shasum, Linux uses sha256sum)
+if command -v sha256sum &> /dev/null; then
+  SHA256_CMD="sha256sum"
+elif command -v shasum &> /dev/null; then
+  SHA256_CMD="shasum -a 256"
+else
+  echo "Error: Neither sha256sum nor shasum command found"
+  exit 1
+fi
+
 # Calculate SHA256 checksums for macOS and Linux binaries
-SHA256_DARWIN_AMD64=$(sha256sum "$DIST_DIR/agent-align-darwin-amd64.tar.gz" | awk '{print $1}')
-SHA256_DARWIN_ARM64=$(sha256sum "$DIST_DIR/agent-align-darwin-arm64.tar.gz" | awk '{print $1}')
-SHA256_LINUX_AMD64=$(sha256sum "$DIST_DIR/agent-align-linux-amd64.tar.gz" | awk '{print $1}')
-SHA256_LINUX_ARM64=$(sha256sum "$DIST_DIR/agent-align-linux-arm64.tar.gz" | awk '{print $1}')
+SHA256_DARWIN_AMD64=$($SHA256_CMD "$DIST_DIR/agent-align-darwin-amd64.tar.gz" | awk '{print $1}')
+SHA256_DARWIN_ARM64=$($SHA256_CMD "$DIST_DIR/agent-align-darwin-arm64.tar.gz" | awk '{print $1}')
+SHA256_LINUX_AMD64=$($SHA256_CMD "$DIST_DIR/agent-align-linux-amd64.tar.gz" | awk '{print $1}')
+SHA256_LINUX_ARM64=$($SHA256_CMD "$DIST_DIR/agent-align-linux-arm64.tar.gz" | awk '{print $1}')
 
 echo "Checksums calculated:"
 echo "  darwin-amd64: $SHA256_DARWIN_AMD64"
@@ -34,7 +44,7 @@ echo "  linux-arm64: $SHA256_LINUX_ARM64"
 FORMULA_FILE="Formula/agent-align.rb"
 
 if [ ! -f "$FORMULA_FILE" ]; then
-  echo "Error: Formula file $FORMULA_FILE not found"
+  echo "Error: Formula file $FORMULA_FILE not found in $(pwd)"
   exit 1
 fi
 
