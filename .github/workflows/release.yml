@@ -143,3 +143,38 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
         run: npx semantic-release
+      - name: Update Homebrew formula
+        env:
+          VERSION: ${{ needs.verify.outputs.release_version }}
+        run: ./scripts/update-brew-formula.sh "$VERSION" dist
+      - name: Push Homebrew formula to tap
+        env:
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          HOMEBREW_TAP_REPO: ${{ vars.HOMEBREW_TAP_REPO }}
+        run: |
+          if [ -z "$HOMEBREW_TAP_TOKEN" ] || [ -z "$HOMEBREW_TAP_REPO" ]; then
+            echo "HOMEBREW_TAP_TOKEN or HOMEBREW_TAP_REPO not set, skipping Homebrew tap update"
+            exit 0
+          fi
+          
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Clone the homebrew tap repository
+          TEMP_DIR=$(mktemp -d)
+          git clone "https://${HOMEBREW_TAP_TOKEN}@github.com/${HOMEBREW_TAP_REPO}.git" "$TEMP_DIR"
+          
+          # Copy the updated formula
+          cp Formula/agent-align.rb "$TEMP_DIR/Formula/agent-align.rb"
+          
+          # Commit and push
+          cd "$TEMP_DIR"
+          git add Formula/agent-align.rb
+          if git diff --staged --quiet; then
+            echo "No changes to Homebrew formula"
+          else
+            git commit -m "chore: update agent-align to version ${VERSION}"
+            git push origin main || git push origin master
+          fi
+          
+          rm -rf "$TEMP_DIR"
