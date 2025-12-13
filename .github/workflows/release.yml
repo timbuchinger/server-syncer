@@ -144,3 +144,95 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
         run: npx semantic-release
+
+      - name: Update Homebrew Tap
+        if: always()
+        env:
+          TAP_TOKEN: ${{ secrets.TAP_REPO_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: |
+          set -euo pipefail
+          # Determine version (strip leading v if present)
+          VERSION='${{ needs.verify.outputs.release_version }}'
+          if [ -z "$VERSION" ] || [ "$VERSION" = "unknown" ]; then
+            VERSION=$(git describe --tags --abbrev=0 || true)
+          fi
+          VER=${VERSION#v}
+
+          echo "Updating Homebrew tap for version: $VER"
+
+          assets=(
+            "agent-align-darwin-arm64.tar.gz"
+            "agent-align-darwin-amd64.tar.gz"
+            "agent-align-linux-amd64.tar.gz"
+            "agent-align-linux-arm64.tar.gz"
+          )
+
+          declare -A shas
+
+          for a in "${assets[@]}"; do
+            url="https://github.com/timbuchinger/agent-align/releases/download/v${VER}/${a}"
+            echo "Fetching $url"
+            sha=$(curl -sL "$url" | shasum -a 256 | cut -d' ' -f1)
+            if [ -z "$sha" ]; then
+              echo "WARNING: could not fetch $url or compute sha256"
+            fi
+            shas[$a]=$sha
+            echo "$a -> ${shas[$a]}"
+          done
+
+          # Clone tap and update formula file
+          git clone https://x-access-token:${TAP_TOKEN}@github.com/timbuchinger/homebrew-tap.git
+          cd homebrew-tap
+
+          # Build new on_macos and on_linux blocks
+          read -r -d '' new_macos <<'EOF' || true
+on_macos do
+  on_arm do
+    url "https://github.com/timbuchinger/agent-align/releases/download/v#{version}/agent-align-darwin-arm64.tar.gz"
+    sha256 "<DARWIN_ARM_SHA>"
+  end
+  on_intel do
+    url "https://github.com/timbuchinger/agent-align/releases/download/v#{version}/agent-align-darwin-amd64.tar.gz"
+    sha256 "<DARWIN_AMD_SHA>"
+  end
+end
+EOF
+
+          read -r -d '' new_linux <<'EOF' || true
+on_linux do
+  on_intel do
+    url "https://github.com/timbuchinger/agent-align/releases/download/v#{version}/agent-align-linux-amd64.tar.gz"
+    sha256 "<LINUX_AMD_SHA>"
+  end
+  on_arm do
+    url "https://github.com/timbuchinger/agent-align/releases/download/v#{version}/agent-align-linux-arm64.tar.gz"
+    sha256 "<LINUX_ARM_SHA>"
+  end
+end
+EOF
+
+          DARWIN_ARM_SHA=${shas["agent-align-darwin-arm64.tar.gz"]}
+          DARWIN_AMD_SHA=${shas["agent-align-darwin-amd64.tar.gz"]}
+          LINUX_AMD_SHA=${shas["agent-align-linux-amd64.tar.gz"]}
+          LINUX_ARM_SHA=${shas["agent-align-linux-arm64.tar.gz"]}
+
+          # Inject SHAs into template blocks (replace placeholder tokens)
+          new_macos=${new_macos//<DARWIN_ARM_SHA>/$DARWIN_ARM_SHA}
+          new_macos=${new_macos//<DARWIN_AMD_SHA>/$DARWIN_AMD_SHA}
+          new_linux=${new_linux//<LINUX_AMD_SHA>/$LINUX_AMD_SHA}
+          new_linux=${new_linux//<LINUX_ARM_SHA>/$LINUX_ARM_SHA}
+
+          # Replace existing blocks using perl (non-greedy)
+          perl -0777 -pe "s/on_macos do.*?end\n/${new_macos}\n/s" -i Formula/agent-align.rb
+          perl -0777 -pe "s/on_linux do.*?end\n/${new_linux}\n/s" -i Formula/agent-align.rb
+
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add Formula/agent-align.rb || true
+          if git diff --cached --quiet; then
+            echo "No changes to formula"
+          else
+            git commit -m "Update agent-align to v${VER}"
+            git push
+          fi
