@@ -119,17 +119,18 @@ jobs:
           mkdir -p dist
           for target in "${TARGETS[@]}"; do
             IFS=' ' read -r os arch <<< "$target"
-            bin="agent-align-${os}-${arch}"
+            out_bin="agent-align"
             if [ "$os" = windows ]; then
-              bin="${bin}.exe"
+              out_bin="${out_bin}.exe"
             fi
-            env GOOS="$os" GOARCH="$arch" CGO_ENABLED=0 go build -ldflags="-s -w -X main.version=${VERSION}" -o "dist/$bin" ./cmd/agent-align
+            archive="agent-align-${os}-${arch}"
+            env GOOS="$os" GOARCH="$arch" CGO_ENABLED=0 go build -ldflags="-s -w -X main.version=${VERSION}" -o "dist/$out_bin" ./cmd/agent-align
             if [ "$os" = windows ]; then
-              zip -j "dist/${bin}.zip" "dist/$bin"
-              rm "dist/$bin"
+              zip -j "dist/${archive}.zip" "dist/$out_bin"
+              rm "dist/$out_bin"
             else
-              tar -czf "dist/${bin}.tar.gz" -C dist "$bin"
-              rm "dist/$bin"
+              tar -czf "dist/${archive}.tar.gz" -C dist "$out_bin"
+              rm "dist/$out_bin"
             fi
           done
       - name: Setup Node
