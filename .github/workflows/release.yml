@@ -187,31 +187,27 @@ jobs:
           cd homebrew-tap
 
           # Build new on_macos and on_linux blocks
-          read -r -d '' new_macos <<-'EOF' || true
-          on_macos do
-            on_arm do
-              url "https://github.com/timbuchinger/agent-align/releases/download/v#{version}/agent-align-darwin-arm64.tar.gz"
-              sha256 "<DARWIN_ARM_SHA>"
-            end
-            on_intel do
-              url "https://github.com/timbuchinger/agent-align/releases/download/v#{version}/agent-align-darwin-amd64.tar.gz"
-              sha256 "<DARWIN_AMD_SHA>"
-            end
-          end
-          EOF
+          new_macos='on_macos do
+  on_arm do
+    url "https://github.com/timbuchinger/agent-align/releases/download/v#{version}/agent-align-darwin-arm64.tar.gz"
+    sha256 "<DARWIN_ARM_SHA>"
+  end
+  on_intel do
+    url "https://github.com/timbuchinger/agent-align/releases/download/v#{version}/agent-align-darwin-amd64.tar.gz"
+    sha256 "<DARWIN_AMD_SHA>"
+  end
+end'
 
-          read -r -d '' new_linux <<-'EOF' || true
-          on_linux do
-            on_intel do
-              url "https://github.com/timbuchinger/agent-align/releases/download/v#{version}/agent-align-linux-amd64.tar.gz"
-              sha256 "<LINUX_AMD_SHA>"
-            end
-            on_arm do
-              url "https://github.com/timbuchinger/agent-align/releases/download/v#{version}/agent-align-linux-arm64.tar.gz"
-              sha256 "<LINUX_ARM_SHA>"
-            end
-          end
-          EOF
+          new_linux='on_linux do
+  on_intel do
+    url "https://github.com/timbuchinger/agent-align/releases/download/v#{version}/agent-align-linux-amd64.tar.gz"
+    sha256 "<LINUX_AMD_SHA>"
+  end
+  on_arm do
+    url "https://github.com/timbuchinger/agent-align/releases/download/v#{version}/agent-align-linux-arm64.tar.gz"
+    sha256 "<LINUX_ARM_SHA>"
+  end
+end'
 
           DARWIN_ARM_SHA=${shas["agent-align-darwin-arm64.tar.gz"]}
           DARWIN_AMD_SHA=${shas["agent-align-darwin-amd64.tar.gz"]}
