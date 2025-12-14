@@ -149,7 +149,6 @@ jobs:
       - name: Update Homebrew Tap
         if: always()
         env:
-          TAP_REPO_SSH_KEY: ${{ secrets.TAP_REPO_SSH_KEY }}
           GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
         run: |
           set -euo pipefail
@@ -183,20 +182,17 @@ jobs:
           done
 
           # Clone tap and update formula file
-          # Require SSH deploy key (no HTTPS fallback)
-          if [ -z "${TAP_REPO_SSH_KEY:-}" ]; then
-            echo "Error: TAP_REPO_SSH_KEY secret not set. Aborting."
-            exit 1
-          fi
+          # Use official ssh-agent action to load the private key securely
+          # This expects `secrets.TAP_REPO_SSH_KEY` to contain the private key
+          echo "Setting up SSH agent via action"
+      - name: Setup SSH key for Homebrew tap
+        uses: webfactory/ssh-agent@v0.9.1
+        with:
+          ssh-private-key: ${{ secrets.TAP_REPO_SSH_KEY }}
 
-          echo "Using SSH key to clone Homebrew tap"
+      - name: Clone Homebrew tap
+        run: |
           mkdir -p ~/.ssh
-          # Write key to a temporary file and add to ssh-agent
-          printf '%s' "$TAP_REPO_SSH_KEY" > /tmp/tap_key
-          chmod 600 /tmp/tap_key
-          eval "$(ssh-agent -s)"
-          ssh-add /tmp/tap_key
-          # Ensure GitHub host key is known to avoid prompts
           ssh-keyscan github.com >> ~/.ssh/known_hosts
           git clone git@github.com:timbuchinger/homebrew-tap.git
           cd homebrew-tap
