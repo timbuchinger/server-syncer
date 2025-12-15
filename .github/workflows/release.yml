@@ -242,9 +242,13 @@ jobs:
           new_linux=${new_linux//<LINUX_AMD_SHA>/$LINUX_AMD_SHA}
           new_linux=${new_linux//<LINUX_ARM_SHA>/$LINUX_ARM_SHA}
 
-          # Replace existing blocks using perl (non-greedy)
-          perl -0777 -pe "s/on_macos do.*?end\n/${new_macos}\n/s" -i Formula/agent-align.rb
-          perl -0777 -pe "s/on_linux do.*?end\n/${new_linux}\n/s" -i Formula/agent-align.rb
+          # Write replacement blocks to temp files to avoid quoting/escaping issues
+          printf '%s\n' "$new_macos" > /tmp/new_macos.rb
+          printf '%s\n' "$new_linux" > /tmp/new_linux.rb
+
+          # Replace existing blocks using perl, reading replacements from files
+          perl -0777 -i -pe 'BEGIN{ local $/; open my $fh, "<", "/tmp/new_macos.rb" or die $!; $r=<$fh>; } s/on_macos do.*?end\n/$r\n/s' Formula/agent-align.rb
+          perl -0777 -i -pe 'BEGIN{ local $/; open my $fh, "<", "/tmp/new_linux.rb" or die $!; $r=<$fh>; } s/on_linux do.*?end\n/$r\n/s' Formula/agent-align.rb
 
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
