@@ -204,6 +204,7 @@ jobs:
           DARWIN_AMD_SHA: ${{ steps.update_shas.outputs.DARWIN_AMD_SHA }}
           LINUX_AMD_SHA: ${{ steps.update_shas.outputs.LINUX_AMD_SHA }}
           LINUX_ARM_SHA: ${{ steps.update_shas.outputs.LINUX_ARM_SHA }}
+          VER: ${{ steps.update_shas.outputs.VER }}
         run: |
           mkdir -p ~/.ssh
           ssh-keyscan github.com >> ~/.ssh/known_hosts
