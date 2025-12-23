@@ -12,13 +12,16 @@ func TestGetTransformer(t *testing.T) {
 		wantCopilot bool
 		wantCodex   bool
 		wantClaude  bool
+		wantGemini  bool
 	}{
-		{"copilot", "copilot", true, false, false},
-		{"copilot spaced", " copilot ", true, false, false},
-		{"codex", "codex", false, true, false},
-		{"codex spaced", " codex ", false, true, false},
-		{"claude", "claudecode", false, false, true},
-		{"default", "vscode", false, false, false},
+		{"copilot", "copilot", true, false, false, false},
+		{"copilot spaced", " copilot ", true, false, false, false},
+		{"codex", "codex", false, true, false, false},
+		{"codex spaced", " codex ", false, true, false, false},
+		{"claude", "claudecode", false, false, true, false},
+		{"gemini", "gemini", false, false, false, true},
+		{"gemini spaced", " gemini ", false, false, false, true},
+		{"default", "vscode", false, false, false, false},
 	}
 
 	for _, tt := range tests {
@@ -27,6 +30,7 @@ func TestGetTransformer(t *testing.T) {
 			_, isCopilot := got.(*CopilotTransformer)
 			_, isCodex := got.(*CodexTransformer)
 			_, isClaude := got.(*ClaudeTransformer)
+			_, isGemini := got.(*GeminiTransformer)
 
 			if isCopilot != tt.wantCopilot {
 				t.Fatalf("expected copilot=%v, got %v", tt.wantCopilot, isCopilot)
@@ -36,6 +40,9 @@ func TestGetTransformer(t *testing.T) {
 			}
 			if isClaude != tt.wantClaude {
 				t.Fatalf("expected claude=%v, got %v", tt.wantClaude, isClaude)
+			}
+			if isGemini != tt.wantGemini {
+				t.Fatalf("expected gemini=%v, got %v", tt.wantGemini, isGemini)
 			}
 		})
 	}
@@ -198,5 +205,102 @@ func TestCodexTransformerGithubToken(t *testing.T) {
 		if len(headers.(map[string]interface{})) != 0 {
 			t.Fatalf("expected Authorization header to be removed, got %v", headers)
 		}
+	}
+}
+
+func TestGeminiTransformer_RemovesUnsupportedFields(t *testing.T) {
+	transformer := &GeminiTransformer{}
+	servers := map[string]interface{}{
+		"server1": map[string]interface{}{
+			"command":     "npx",
+			"args":        []interface{}{"-y", "some-mcp-server"},
+			"autoApprove": []interface{}{},
+			"disabled":    false,
+		},
+		"server2": map[string]interface{}{
+			"type":    "stdio",
+			"command": "uvx",
+			"gallery": true,
+			"env": map[string]interface{}{
+				"API_KEY": "test",
+			},
+		},
+		"server3": map[string]interface{}{
+			"command":  "node",
+			"kept":     "value",
+			"disabled": true,
+		},
+	}
+
+	if err := transformer.Transform(servers); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Verify server1 has autoApprove and disabled removed but other fields remain
+	server1 := servers["server1"].(map[string]interface{})
+	if _, exists := server1["autoApprove"]; exists {
+		t.Error("autoApprove should be removed from server1")
+	}
+	if _, exists := server1["disabled"]; exists {
+		t.Error("disabled should be removed from server1")
+	}
+	if server1["command"] != "npx" {
+		t.Error("command should be preserved in server1")
+	}
+	if server1["args"] == nil {
+		t.Error("args should be preserved in server1")
+	}
+
+	// Verify server2 has type and gallery removed but other fields remain
+	server2 := servers["server2"].(map[string]interface{})
+	if _, exists := server2["type"]; exists {
+		t.Error("type should be removed from server2")
+	}
+	if _, exists := server2["gallery"]; exists {
+		t.Error("gallery should be removed from server2")
+	}
+	if server2["command"] != "uvx" {
+		t.Error("command should be preserved in server2")
+	}
+	if server2["env"] == nil {
+		t.Error("env should be preserved in server2")
+	}
+
+	// Verify server3 has disabled removed but kept field remains
+	server3 := servers["server3"].(map[string]interface{})
+	if _, exists := server3["disabled"]; exists {
+		t.Error("disabled should be removed from server3")
+	}
+	if server3["kept"] != "value" {
+		t.Error("kept field should be preserved in server3")
+	}
+	if server3["command"] != "node" {
+		t.Error("command should be preserved in server3")
+	}
+}
+
+func TestGeminiTransformer_NonMapServer(t *testing.T) {
+	transformer := &GeminiTransformer{}
+	servers := map[string]interface{}{
+		"invalid": "not-a-map",
+		"valid": map[string]interface{}{
+			"command":     "npx",
+			"autoApprove": []interface{}{},
+		},
+	}
+
+	if err := transformer.Transform(servers); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Valid server should have autoApprove removed
+	validServer := servers["valid"].(map[string]interface{})
+	if _, exists := validServer["autoApprove"]; exists {
+		t.Error("autoApprove should be removed from valid server")
+	}
+
+	// Invalid server should remain unchanged (string)
+	if servers["invalid"] != "not-a-map" {
+		t.Error("non-map server should remain unchanged")
 	}
 }

@@ -248,3 +248,75 @@ func TestFormatGeminiConfigWithoutExistingFile(t *testing.T) {
 		t.Fatal("mcpServers key missing")
 	}
 }
+
+func TestSyncGeminiRemovesUnsupportedFields(t *testing.T) {
+	targets := []AgentTarget{
+		{Name: "gemini"},
+	}
+	servers := map[string]interface{}{
+		"server1": map[string]interface{}{
+			"command":     "npx",
+			"args":        []interface{}{"-y", "some-mcp-server"},
+			"autoApprove": []interface{}{},
+			"disabled":    false,
+		},
+		"server2": map[string]interface{}{
+			"type":    "stdio",
+			"command": "uvx",
+			"gallery": true,
+			"env": map[string]interface{}{
+				"API_KEY": "test",
+			},
+		},
+	}
+
+	s := New(targets)
+	result, err := s.Sync(servers)
+	if err != nil {
+		t.Fatalf("Sync returned error: %v", err)
+	}
+
+	gemini := result.Agents["gemini"][0]
+	var geminiData map[string]interface{}
+	if err := json.Unmarshal([]byte(gemini.Content), &geminiData); err != nil {
+		t.Fatalf("gemini output not valid JSON: %v", err)
+	}
+
+	mcpServers, ok := geminiData["mcpServers"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("mcpServers key missing in output")
+	}
+
+	// Verify server1 has unsupported fields removed
+	server1, ok := mcpServers["server1"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("server1 missing in mcpServers")
+	}
+	if _, exists := server1["autoApprove"]; exists {
+		t.Error("autoApprove should be removed from server1")
+	}
+	if _, exists := server1["disabled"]; exists {
+		t.Error("disabled should be removed from server1")
+	}
+	if server1["command"] != "npx" {
+		t.Error("command should be preserved in server1")
+	}
+
+	// Verify server2 has unsupported fields removed
+	server2, ok := mcpServers["server2"].(map[string]interface{})
+	if !ok {
+		t.Fatalf("server2 missing in mcpServers")
+	}
+	if _, exists := server2["type"]; exists {
+		t.Error("type should be removed from server2")
+	}
+	if _, exists := server2["gallery"]; exists {
+		t.Error("gallery should be removed from server2")
+	}
+	if server2["command"] != "uvx" {
+		t.Error("command should be preserved in server2")
+	}
+	if server2["env"] == nil {
+		t.Error("env should be preserved in server2")
+	}
+}

@@ -23,6 +23,8 @@ func GetTransformer(agent string) Transformer {
 		return &ClaudeTransformer{}
 	case "codex":
 		return &CodexTransformer{}
+	case "gemini":
+		return &GeminiTransformer{}
 	default:
 		return &NoOpTransformer{}
 	}
@@ -188,6 +190,28 @@ func (t *ClaudeTransformer) Transform(servers map[string]interface{}) error {
 				server["type"] = "http"
 			}
 		}
+	}
+	return nil
+}
+
+// GeminiTransformer removes fields that are not supported by Gemini's enhanced
+// validation. Gemini rejects configs that contain autoApprove, disabled, gallery,
+// or type fields.
+type GeminiTransformer struct{}
+
+// Transform removes unsupported fields from all server configurations.
+func (t *GeminiTransformer) Transform(servers map[string]interface{}) error {
+	for _, serverRaw := range servers {
+		server, ok := serverRaw.(map[string]interface{})
+		if !ok {
+			continue
+		}
+
+		// Remove fields that Gemini does not support
+		delete(server, "autoApprove")
+		delete(server, "disabled")
+		delete(server, "gallery")
+		delete(server, "type")
 	}
 	return nil
 }
